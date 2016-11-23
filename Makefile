@@ -26,7 +26,7 @@ FILES=basic_model.cpp
 
 build: ${BASIC_MODEL}
 
-${BASIC_MODEL}: ${FILES_FULL_PATH}
+${BASIC_MODEL}: ${FILES}
 	${CC} ${CPPFLAGS} ${FILES} -o ${BASIC_MODEL} ${libs} ${OPT}
 
 
