@@ -3,3 +3,4 @@
 /dokumentace.pdf
 /dokumentace.synctex.gz
 *.out
+/.idea/**
