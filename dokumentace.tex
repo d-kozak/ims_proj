@@ -7,19 +7,17 @@
 \usepackage{blindtext}
 \usepackage{scrextend}
 \begin{document}
-
-Hello, its me. I was wondering if your going to see see the new Star Wars moview. Its good, but I am not in it, as I have died  in the movie number 6.\\ 
-	\href{https://www.youtube.com/watch?v=aSf2C1Pd2Ns}{Best song ever}
-\\ \\ \\ 
-
-	\textbf{HELLO FROM THE DARK SIDE
-	I MUST HAVE KILLED ALL THE JEDIS
-	I CANT SAY THAT I AM SORRY FOR BLOWING UP ALDERAN
-	WE COULD HAVE RULLED THE GALAXY AS FATHET AND SON! \\ sad face :(} \\
-	\href{https://www.youtube.com/watch?v=UAMyh8DjCrQ}{Best song ever}
-
-\chapter{Meření}
-\section{První měření 21.11.2016 17:30}
+\chapter{Úvod}
+V této práci je řešena implementace modelu obchodu s potravinami v rámci projektu do IMS.
+Na základě modelu a simulačních experimentů bude ukázáno chování systému při zavedení samoobslužných pokladen. Smyslem experimentu je demonstrovat, že pokud by v běžně velkém supermarketu některé normální pokladny byly nahrazeny samoobslužnými, bude to mít pozitivní účinek na celý systém, konkrétně řečeno dojde ke snížení průměrných i maximálních front u pokladen.
+\section{Autoři podílející se na práci a odborné konzultace}
+Celou práci navrhli,implementovali a zhodnotili studenti třetího ročníku bakalářského studia na FIT VUT v Brně David Kozák a Peter Miklánek. Práce byla konzultována s vedoucím prodejny, která byla modelována , a s jejími řadovými zaměstnanci.  Práci jsme též konzultovali se zadavatelem projektu Ing. Martinem Hrubým Ph.D..
+\section{Informace o simulovaném systému}
+Pro naše experimenty jsme zvolili konkrétní supermarket Lidl ve Slatině na adrese Hviezdoslavova 1288/2. Do tohoto obchodu chodíme pravidelně nakupovat, proto jsme data pro modelování sbírali nevědomky již dlouho dobu dopředu. Obchod je dobře zařízený a většinu dne lze nákup vyřídit celkem rychle, nicméně v intervalu mezi 16-19 hodin dochází tradičně k velkým frontám, protože lidé jezdí domů z práce a chtějí nakupovat. Čekání v těchto frontách může být velmi iritující. Často nás při čekání napadlo, zda by tento problém nemohl být vyřešen za pomoci samoobslužných pokladen. Konkrétně navrhujeme místo dvou současných pokladen zařídit 6 samoobslužných. Nejdříve tedy namodelujeme současný stav obchodu a poté vytvoříme upravenou verzi se samoobslužnými pokladnami. Následně pomocí experimentů ověříme, zda tato změna bude mít chtěný efekt na maximální a průměrnou délku front a snížení doby strávené ve frontě.
+\chapter{Rozbor tématu a použitých metod/metodologií}
+V této části popíšeme data získaná z oficiálních zdrojů lidlu a také je srovnáme s naším vlastním měřením.
+\section{Meření}
+\subsection{První měření 21.11.2016 17:30}
 V průběhu 5-ti minut přišlo do obchodu 32 lidí.
 
 Parkoviště je hodně velké, ještě jsem neviděl, že by se zaplnilo, asi toto můžeme ignorovat, z pohledu pokladen není podstatné.
@@ -33,7 +31,7 @@ Je tam pekárna, jednou za čas do ní někdo ze zaměstnanců odběhne a má ta
 
 Můj nákup trval sedm minut bez pokladny. Petrův nákup trval také sedm minut.
 
-\section{Doba u pokladny}
+\subsection{Doba u pokladny}
 Naměřeno u jedné pokladny než ji zavřeli.
 \begin{itemize}
 \item 1:05
@@ -53,5 +51,19 @@ Naměřeno Petrem
 
 
 \textbf{Bylo by dobré naměřit více dat :) }
+\chapter{Koncepce}
+\section{Modelářská témata}
+V této části nejdříve popíšeme náš model pomocí slovního popisu a následně ho popíšeme pomocí petriho sítě. Co zanedbáváme:
+\begin{itemize}
+\item Jednotlivé osoby, pokud přijdou ve skupině a nakupují spolu, modelujeme je jako jeden proces
+\item Osoby, které si pouze koupí maso v masně a poté opět odejdou, na základě měření můžeme říci, že jich je velice málo a jejich začlenění do systému nebude mít velký účinek.
+\item Parkoviště a parkovací místa - ne všichni přijedou autem a navíc na základě měření můžeme říci, že zaplnění parkoviště není obvyklý ani častý jev.
+\end{itemize}
+\subsection{Slovní popis modelovaného systému}
+Do prodejny přichází lidé s exponenciálním rozložením se středem A vteřin.  Nejdříve zaberou vozík, kterých je k dispozici 200, a poté se vydají na nákup. Na vozík čekají max 10 vteřin, jinak odcházejí. Při vchodu do obchodu musí projít bránou, kterou může najednou projít jen jeden proces, jejíž průchod trvá exp(3s). Doba nákupu je dána  buď exponenciálním rozložením se středem B1 minut nebo B2 minut nebo B3 minut (velký,střední a malý nákup). Poté jdou lidé k pokladnám, kde se postaví do té fronty, ve které se nachází nejméně lidí. V případě více pokladen se stejným počtem lidí si vyberou tu nejbližší. Doba obsluhy u pokladny je dána exponencialním rozložením se středem C minut. Po odchodu z pokladny se ještě 30\% lidí zastaví v masně. V masně pracují dva prodavači a doba obsluhy je dána exponenciálním rozložením se středem Ž minut. Z této fronty zákazníci odcházejí neobslouženi, pokud čekají déle než 1 minutu. Pokladen je k dispozici D, ale většinou jich funguje méně. V prodejně je E zaměstnanců, tito zaměstanci buď chystají zboží nebo jsou na pokladnách. Jeden zaměstnanec také musí každou hodinu na dobu danou exponenciálním rozložením vejít do pekárny a chystat pečivo. Zaměstnanci mají také nárok na 30-minutovou přestávku. Tuto předstávku mohou vykonávat maximálně 25\% zaměstanců najednout a to pouze jednou za pracovní dobu. K této činnosti se mohou rozhodnout v momentu, kdy skončí právě prováděnou činnost. Prodavači na pokladně zůstávají tak dlouho, dokud není průměrná délka fronty menší než F lidí. Prodavači mají při obsluze 5\% šanci, že udělají chybu a budou muset volat vedoucí. Ta je většinu svého času v kanceláři a systém neovlivňuje, ale tato žádost od zaměstnance ji vyruší od práce, tedy dorazí až po době dané exponenciálním rozložením se středem G minut. Po obsloužení lidí vrací vozík a odchází ze systému, ale 5\% lidí něco zapomene a vrací se zpět do obchodu.
+\section{Implementační témata}
+\chapter{Architektura simulačního modelu/simulátoru}
+\chapter{Podstata simulačních experimentů a jejich průběh}
+\chapter{Shrnutí simulačních experimentů a závěr}
 
 \end{document}
