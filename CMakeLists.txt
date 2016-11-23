@@ -4,3 +4,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 set(SOURCE_FILES basic_model.cpp)
 add_executable(ims_proj ${SOURCE_FILES})
+
+target_link_libraries(ims_proj m)
+target_link_libraries(ims_proj simlib)
