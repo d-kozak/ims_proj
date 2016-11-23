@@ -10,7 +10,7 @@
  */
 
 static const int SECOND = 1;
-static const int MINUTE = 60;
+static const int MINUTE = 60 * SECOND;
 static const int HOUR = MINUTE * 60;
 
 /**
@@ -24,12 +24,23 @@ static const int TROLLEY_STORE_CAPACITY = 200;
 
 static const int SMALL_SHOPPING_TIME = 7 * MINUTE;
 static const int MEDIUM_SHOPPING_TIME = 14 * MINUTE;
-static const int BIG_SHOPPING_TIME = 30 * MINUTE - SECOND;
+static const int BIG_SHOPPING_TIME = 30 * MINUTE;
+
+static const int CASH_REGISTER_TIME = MINUTE;
+static const int CASH_REGISTER_SIZE = 7;
+
+static const int MEAT_SHOP_CAPACITY = 2;
+static const int MEAT_SHOP_TIME = 1 * MINUTE;
 
 Store trolleys("Trolleys", TROLLEY_STORE_CAPACITY);
 Facility gate("Gate");
 
-Histogram shoppingKind ("Shopping kind",0,10 * MINUTE,3);
+
+Facility cashRegisters[CASH_REGISTER_SIZE];
+
+Histogram shoppingKind ("Shopping kind",0,MINUTE,10);
+
+Store meatShop("meat shop",MEAT_SHOP_CAPACITY);
 
 class Customer : public Process {
     void Behavior() {
@@ -40,18 +51,48 @@ class Customer : public Process {
         Release(gate);
 
         double decision = Random();
+        double shoppingTime;
         if (decision < 0.33) {
             //small shopping
-            Wait(SMALL_SHOPPING_TIME);
-            shoppingKind(SMALL_SHOPPING_TIME);
+            shoppingTime = Exponential(SMALL_SHOPPING_TIME);
         } else if (decision < 0.66) {
             //medium shopping
-            Wait(MEDIUM_SHOPPING_TIME);
-            shoppingKind(MEDIUM_SHOPPING_TIME);
+            shoppingTime = Exponential(MEDIUM_SHOPPING_TIME);
         } else {
             //big shopping
-            Wait(BIG_SHOPPING_TIME);
-            shoppingKind(BIG_SHOPPING_TIME);
+            shoppingTime = Exponential(BIG_SHOPPING_TIME);
+        }
+
+        Wait(shoppingTime);
+        shoppingKind(shoppingTime);
+
+
+        // after shopping client goes to the cash register
+        // and picks the one with shortest queue
+        Facility * withShortestQueue = &cashRegisters[0];
+        int min = cashRegisters[0].Q1->size();
+        for(int i = 0; i < CASH_REGISTER_SIZE ; i++){
+            if(min > cashRegisters[i].Q1->size()){
+                min = cashRegisters[i].Q1->size();
+                withShortestQueue = &cashRegisters[i];
+            }
+        }
+
+        Seize(*withShortestQueue);
+
+        // cash register process
+        Wait(Exponential(CASH_REGISTER_TIME));
+
+        Release(*withShortestQueue);
+
+        decision = Random();
+        if(decision > 0.7){
+            // go to buy some meat
+            Enter(meatShop);
+
+            Wait(Exponential(MEAT_SHOP_TIME));
+
+            Leave(meatShop);
         }
 
         Leave(trolleys);
@@ -72,5 +113,9 @@ int main() {
     gate.Output();
     trolleys.Output();
     shoppingKind.Output();
+    for(Facility & fac : cashRegisters){
+        fac.Output();
+    }
+    meatShop.Output();
     return 0;
 }
