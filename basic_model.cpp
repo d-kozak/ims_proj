@@ -1,9 +1,5 @@
 #include <iostream>
 #include "simlib.h"
-
-
-// TODO FIX CMAKE, use Makefile for now
-
 /**
  *          CONSTANTS
  * All constants are in seconds
@@ -20,19 +16,23 @@ static const int SIMULATION_END_TIME = 3 * HOUR;
 
 static const int CUSTUMER_CREATION_TIME = 10;
 static const int GATE_ENTERING_TIME = 3;
+
 static const int TROLLEY_STORE_CAPACITY = 200;
+static const int TROLLEY_TIMEOUT = 10 * SECOND;
 
 static const int SMALL_SHOPPING_TIME = 7 * MINUTE;
 static const int MEDIUM_SHOPPING_TIME = 14 * MINUTE;
 static const int BIG_SHOPPING_TIME = 30 * MINUTE;
 
-static const int CASH_REGISTER_TIME = MINUTE;
+static const int CASH_REGISTER_TIME = 1 * MINUTE;
 static const int CASH_REGISTER_SIZE = 7;
 
 static const int MEAT_SHOP_CAPACITY = 2;
 static const int MEAT_SHOP_TIME = 1 * MINUTE;
 
 Store trolleys("Trolleys", TROLLEY_STORE_CAPACITY);
+int timeoutTrolleyCount = 0;
+
 Facility gate("Gate");
 
 
@@ -40,11 +40,34 @@ Facility cashRegisters[CASH_REGISTER_SIZE];
 
 Histogram shoppingKind ("Shopping kind",0,MINUTE,10);
 
+int timeoutMeatShopCount = 0;
 Store meatShop("meat shop",MEAT_SHOP_CAPACITY);
 
+class Customer;
+
+class Timeout : public Event {
+    Customer * customer;
+public:
+    Timeout(Customer * customer): Event(),customer(customer){};
+
+    void Behavior();
+
+};
+
 class Customer : public Process {
+    bool wasTimeouted = false;
+    Timeout * timeoutPtr = nullptr;
+
     void Behavior() {
+        PrepareForTimeout(TROLLEY_TIMEOUT);
         Enter(trolleys);
+        if(wasTimeouted){
+            // customer did not acquire trolley in specified time
+            timeoutTrolleyCount++;
+            return;
+        } else {
+            cancelTimeout();
+        }
 
         Seize(gate);
         Wait(GATE_ENTERING_TIME);
@@ -67,7 +90,7 @@ class Customer : public Process {
         shoppingKind(shoppingTime);
 
 
-        // after shopping client goes to the cash register
+        // after shopping client goes to the cash registers
         // and picks the one with shortest queue
         Facility * withShortestQueue = &cashRegisters[0];
         int min = cashRegisters[0].Q1->size();
@@ -97,7 +120,31 @@ class Customer : public Process {
 
         Leave(trolleys);
     }
+
+    void cancelTimeout(){
+        wasTimeouted = false;
+        this->timeoutPtr->Cancel();
+    }
+
+    void PrepareForTimeout(double time){
+        wasTimeouted = false;
+        this->timeoutPtr = new Timeout(this);
+        this->timeoutPtr->Activate(Time+time);
+    }
+
+public:
+    void timeout(){
+        wasTimeouted = true;
+        Out();
+        Activate();
+    }
 };
+
+void Timeout::Behavior(){
+    customer->timeout();
+    Cancel();
+}
+
 
 class Generator : public Event {
     void Behavior() {
@@ -117,5 +164,6 @@ int main() {
         fac.Output();
     }
     meatShop.Output();
+    std::cout << "Timeouted customers in trolley store " << timeoutTrolleyCount << std::endl;
     return 0;
 }
