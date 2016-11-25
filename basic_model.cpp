@@ -1,5 +1,6 @@
 #include <iostream>
 #include "simlib.h"
+
 /**
  *          CONSTANTS
  * All constants are in seconds
@@ -29,26 +30,26 @@ static const int CASH_REGISTER_SIZE = 7;
 
 static const int MEAT_SHOP_CAPACITY = 2;
 static const int MEAT_SHOP_TIME = 1 * MINUTE;
+static const int MEAT_SHOP_TIMEOUT = 3 * MINUTE;
 
 Store trolleys("Trolleys", TROLLEY_STORE_CAPACITY);
 int timeoutTrolleyCount = 0;
 
 Facility gate("Gate");
 
-
 Facility cashRegisters[CASH_REGISTER_SIZE];
 
-Histogram shoppingKind ("Shopping kind",0,MINUTE,10);
+Histogram shoppingKind("Shopping kind", 0, MINUTE, 10);
 
 int timeoutMeatShopCount = 0;
-Store meatShop("meat shop",MEAT_SHOP_CAPACITY);
+Store meatShop("meat shop", MEAT_SHOP_CAPACITY);
 
 class Customer;
 
 class Timeout : public Event {
-    Customer * customer;
+    Customer *customer;
 public:
-    Timeout(Customer * customer): Event(),customer(customer){};
+    Timeout(Customer *customer) : Event(), customer(customer) {};
 
     void Behavior();
 
@@ -56,12 +57,12 @@ public:
 
 class Customer : public Process {
     bool wasTimeouted = false;
-    Timeout * timeoutPtr = nullptr;
+    Timeout *timeoutPtr = nullptr;
 
     void Behavior() {
-        PrepareForTimeout(TROLLEY_TIMEOUT);
+        setTimeout(TROLLEY_TIMEOUT);
         Enter(trolleys);
-        if(wasTimeouted){
+        if (wasTimeouted) {
             // customer did not acquire trolley in specified time
             timeoutTrolleyCount++;
             return;
@@ -92,10 +93,10 @@ class Customer : public Process {
 
         // after shopping client goes to the cash registers
         // and picks the one with shortest queue
-        Facility * withShortestQueue = &cashRegisters[0];
+        Facility *withShortestQueue = &cashRegisters[0];
         int min = cashRegisters[0].Q1->size();
-        for(int i = 0; i < CASH_REGISTER_SIZE ; i++){
-            if(min > cashRegisters[i].Q1->size()){
+        for (int i = 0; i < CASH_REGISTER_SIZE; i++) {
+            if (min > cashRegisters[i].Q1->size()) {
                 min = cashRegisters[i].Q1->size();
                 withShortestQueue = &cashRegisters[i];
             }
@@ -109,9 +110,19 @@ class Customer : public Process {
         Release(*withShortestQueue);
 
         decision = Random();
-        if(decision > 0.7){
+        if (decision > 0.7) {
             // go to buy some meat
+            setTimeout(MEAT_SHOP_TIMEOUT);
             Enter(meatShop);
+            if (wasTimeouted) {
+                // customer timeouted, he/she will return the trolley and
+                // leave this god forsaken land
+                timeoutMeatShopCount++;
+                Leave(trolleys);
+                return;
+            } else {
+                cancelTimeout();
+            }
 
             Wait(Exponential(MEAT_SHOP_TIME));
 
@@ -121,26 +132,26 @@ class Customer : public Process {
         Leave(trolleys);
     }
 
-    void cancelTimeout(){
+    void cancelTimeout() {
         wasTimeouted = false;
         this->timeoutPtr->Cancel();
     }
 
-    void PrepareForTimeout(double time){
+    void setTimeout(double time) {
         wasTimeouted = false;
         this->timeoutPtr = new Timeout(this);
-        this->timeoutPtr->Activate(Time+time);
+        this->timeoutPtr->Activate(Time + time);
     }
 
 public:
-    void timeout(){
+    void timeout() {
         wasTimeouted = true;
         Out();
         Activate();
     }
 };
 
-void Timeout::Behavior(){
+void Timeout::Behavior() {
     customer->timeout();
     Cancel();
 }
@@ -160,10 +171,11 @@ int main() {
     gate.Output();
     trolleys.Output();
     shoppingKind.Output();
-    for(Facility & fac : cashRegisters){
+    for (Facility &fac : cashRegisters) {
         fac.Output();
     }
     meatShop.Output();
     std::cout << "Timeouted customers in trolley store " << timeoutTrolleyCount << std::endl;
+    std::cout << "Timeouted customers in meat shop " << timeoutMeatShopCount << std::endl;
     return 0;
 }
