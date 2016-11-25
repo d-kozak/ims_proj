@@ -1,6 +1,52 @@
 #include <iostream>
 #include "simlib.h"
 
+
+/**
+ * "Library" section
+ * It contains extensions for simlib classes which proved to be useful in our solution
+ */
+class TimeoutableProcess;
+
+class Timeout : public Event {
+    TimeoutableProcess *_process;
+public:
+    Timeout(TimeoutableProcess * process) : Event(), _process(process) {};
+
+    void Behavior();
+
+};
+
+class TimeoutableProcess : public Process{
+    friend class Timeout;
+    Timeout * _timeout;
+    bool  _timeoutHappened;
+protected:
+    void cancelTimeout() {
+        _timeoutHappened = false;
+        this->_timeout->Cancel();
+    }
+
+    void setTimeout(double time) {
+        _timeoutHappened = false;
+        this->_timeout = new Timeout(this);
+        this->_timeout->Activate(Time + time);
+    }
+    void timeout() {
+        _timeoutHappened = true;
+        Out();
+        Activate();
+    }
+    bool wasTimeouted(){
+        return _timeoutHappened;
+    }
+};
+
+void Timeout::Behavior() {
+    _process->timeout();
+    Cancel();
+}
+
 /**
  *          CONSTANTS
  * All constants are in seconds
@@ -44,25 +90,12 @@ Histogram shoppingKind("Shopping kind", 0, MINUTE, 10);
 int timeoutMeatShopCount = 0;
 Store meatShop("meat shop", MEAT_SHOP_CAPACITY);
 
-class Customer;
-
-class Timeout : public Event {
-    Customer *customer;
-public:
-    Timeout(Customer *customer) : Event(), customer(customer) {};
-
-    void Behavior();
-
-};
-
-class Customer : public Process {
-    bool wasTimeouted = false;
-    Timeout *timeoutPtr = nullptr;
+class Customer : public TimeoutableProcess {
 
     void Behavior() {
         setTimeout(TROLLEY_TIMEOUT);
         Enter(trolleys);
-        if (wasTimeouted) {
+        if (wasTimeouted()) {
             // customer did not acquire trolley in specified time
             timeoutTrolleyCount++;
             return;
@@ -114,7 +147,7 @@ class Customer : public Process {
             // go to buy some meat
             setTimeout(MEAT_SHOP_TIMEOUT);
             Enter(meatShop);
-            if (wasTimeouted) {
+            if (wasTimeouted()) {
                 // customer timeouted, he/she will return the trolley and
                 // leave this god forsaken land
                 timeoutMeatShopCount++;
@@ -129,33 +162,10 @@ class Customer : public Process {
             Leave(meatShop);
         }
 
+        
         Leave(trolleys);
     }
-
-    void cancelTimeout() {
-        wasTimeouted = false;
-        this->timeoutPtr->Cancel();
-    }
-
-    void setTimeout(double time) {
-        wasTimeouted = false;
-        this->timeoutPtr = new Timeout(this);
-        this->timeoutPtr->Activate(Time + time);
-    }
-
-public:
-    void timeout() {
-        wasTimeouted = true;
-        Out();
-        Activate();
-    }
 };
-
-void Timeout::Behavior() {
-    customer->timeout();
-    Cancel();
-}
-
 
 class Generator : public Event {
     void Behavior() {
