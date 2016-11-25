@@ -1,22 +1,49 @@
-\documentclass[12pt,a4paper]{report}
+\documentclass[12pt,a4paper,titlepage]{article}
+\usepackage[left=2.5cm,text={16cm,20cm},top=4cm]{geometry}
+\usepackage[T1]{fontenc}
 \usepackage[czech]{babel}
 \usepackage[utf8]{inputenc}
-\usepackage[T1]{fontenc}
-\usepackage{graphicx}
-\usepackage{hyperref}
-\usepackage{blindtext}
-\usepackage{scrextend}
+
+\bibliographystyle{czplain}
+
+%úvodzovky
+\providecommand{\uv}[1]{\quotedblbase #1\textquotedblleft}
+
 \begin{document}
-\chapter{Úvod}
+
+\begin{titlepage}
+\begin{center}
+    {
+    	\Huge\textsc{Vysoké učení technické v~Brně}}\\
+    \smallskip
+    {
+    	\huge\textsc{Fakulta informačních technologií}}\\
+    \bigskip
+    \vspace{\stretch{0.382}} %pomery odpovedajúcí zlatému rezu    
+    \huge{Modelování a simulace}\\
+    \smallskip
+    \Huge{Projekt - model supermarketu}\\
+    \vspace{\stretch{0.618}}
+\end{center}
+    {\Large \today \hfill David Kozák (xkozak15)  }\\
+    \smallskip
+    {\Large \hfill Peter Miklánek (xmikla10)}
+\end{titlepage}
+
+\newpage
+\tableofcontents
+\newpage
+
+\section{Úvod}
 V této práci je řešena implementace modelu obchodu s potravinami v rámci projektu do IMS.
 Na základě modelu a simulačních experimentů bude ukázáno chování systému při zavedení samoobslužných pokladen. Smyslem experimentu je demonstrovat, že pokud by v běžně velkém supermarketu některé normální pokladny byly nahrazeny samoobslužnými, bude to mít pozitivní účinek na celý systém, konkrétně řečeno dojde ke snížení průměrných i maximálních front u pokladen.
-\section{Autoři podílející se na práci a odborné konzultace}
+\subsection{Autoři podílející se na práci a odborné konzultace}
 Celou práci navrhli,implementovali a zhodnotili studenti třetího ročníku bakalářského studia na FIT VUT v Brně David Kozák a Peter Miklánek. Práce byla konzultována s vedoucím prodejny, která byla modelována , a s jejími řadovými zaměstnanci.  Práci jsme též konzultovali se zadavatelem projektu Ing. Martinem Hrubým Ph.D..
-\section{Informace o simulovaném systému}
+\subsection{Informace o simulovaném systému}
 Pro naše experimenty jsme zvolili konkrétní supermarket Lidl ve Slatině na adrese Hviezdoslavova 1288/2. Do tohoto obchodu chodíme pravidelně nakupovat, proto jsme data pro modelování sbírali nevědomky již dlouho dobu dopředu. Obchod je dobře zařízený a většinu dne lze nákup vyřídit celkem rychle, nicméně v intervalu mezi 16-19 hodin dochází tradičně k velkým frontám, protože lidé jezdí domů z práce a chtějí nakupovat. Čekání v těchto frontách může být velmi iritující. Často nás při čekání napadlo, zda by tento problém nemohl být vyřešen za pomoci samoobslužných pokladen. Konkrétně navrhujeme místo dvou současných pokladen zařídit 6 samoobslužných. Nejdříve tedy namodelujeme současný stav obchodu a poté vytvoříme upravenou verzi se samoobslužnými pokladnami. Následně pomocí experimentů ověříme, zda tato změna bude mít chtěný efekt na maximální a průměrnou délku front a snížení doby strávené ve frontě.
-\chapter{Rozbor tématu a použitých metod/metodologií}
+\section{Rozbor tématu a použitých metod/metodologií}
 V této části popíšeme data získaná z oficiálních zdrojů lidlu a také je srovnáme s naším vlastním měřením.
-\section{Meření}
+\subsection{Meření}
 \subsection{První měření 21.11.2016 17:30}
 V průběhu 5-ti minut přišlo do obchodu 32 lidí.
 
@@ -51,8 +78,8 @@ Naměřeno Petrem
 
 
 \textbf{Bylo by dobré naměřit více dat :) }
-\chapter{Koncepce}
-\section{Modelářská témata}
+\section{Koncepce}
+\subsection{Modelářská témata}
 V této části nejdříve popíšeme náš model pomocí slovního popisu a následně ho popíšeme pomocí petriho sítě. Co zanedbáváme:
 \begin{itemize}
 \item Jednotlivé osoby, pokud přijdou ve skupině a nakupují spolu, modelujeme je jako jeden proces
@@ -62,8 +89,8 @@ V této části nejdříve popíšeme náš model pomocí slovního popisu a ná
 \subsection{Slovní popis modelovaného systému}
 Do prodejny přichází lidé s exponenciálním rozložením se středem A vteřin.  Nejdříve zaberou vozík, kterých je k dispozici 200, a poté se vydají na nákup. Na vozík čekají max 10 vteřin, jinak odcházejí. Při vchodu do obchodu musí projít bránou, kterou může najednou projít jen jeden proces, jejíž průchod trvá exp(3s). Doba nákupu je dána  buď exponenciálním rozložením se středem B1 minut nebo B2 minut nebo B3 minut (velký,střední a malý nákup). Poté jdou lidé k pokladnám, kde se postaví do té fronty, ve které se nachází nejméně lidí. V případě více pokladen se stejným počtem lidí si vyberou tu nejbližší. Doba obsluhy u pokladny je dána exponencialním rozložením se středem C minut. Po odchodu z pokladny se ještě 30\% lidí zastaví v masně. V masně pracují dva prodavači a doba obsluhy je dána exponenciálním rozložením se středem Ž minut. Z této fronty zákazníci odcházejí neobslouženi, pokud čekají déle než 1 minutu. Pokladen je k dispozici D, ale většinou jich funguje méně. V prodejně je E zaměstnanců, tito zaměstanci buď chystají zboží nebo jsou na pokladnách. Jeden zaměstnanec také musí každou hodinu na dobu danou exponenciálním rozložením vejít do pekárny a chystat pečivo. Zaměstnanci mají také nárok na 30-minutovou přestávku. Tuto předstávku mohou vykonávat maximálně 25\% zaměstanců najednout a to pouze jednou za pracovní dobu. K této činnosti se mohou rozhodnout v momentu, kdy skončí právě prováděnou činnost. Prodavači na pokladně zůstávají tak dlouho, dokud není průměrná délka fronty menší než F lidí. Prodavači mají při obsluze 5\% šanci, že udělají chybu a budou muset volat vedoucí. Ta je většinu svého času v kanceláři a systém neovlivňuje, ale tato žádost od zaměstnance ji vyruší od práce, tedy dorazí až po době dané exponenciálním rozložením se středem G minut. Po obsloužení lidí vrací vozík a odchází ze systému, ale 5\% lidí něco zapomene a vrací se zpět do obchodu.
 \section{Implementační témata}
-\chapter{Architektura simulačního modelu/simulátoru}
-\chapter{Podstata simulačních experimentů a jejich průběh}
-\chapter{Shrnutí simulačních experimentů a závěr}
+\section{Architektura simulačního modelu/simulátoru}
+\section{Podstata simulačních experimentů a jejich průběh}
+\section{Shrnutí simulačních experimentů a závěr}
 
 \end{document}
