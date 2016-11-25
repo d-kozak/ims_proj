@@ -4,7 +4,7 @@
 
 /**
  * "Library" section
- * It contains extensions for simlib classes which proved to be useful in our solution
+ * It contains extensions for simlib classes which proved to be useful in our project
  */
 class TimeoutableProcess;
 
@@ -18,6 +18,7 @@ public:
 };
 
 class TimeoutableProcess : public Process{
+    // TODO use behaviour parametrization design pattern for clearer timeout
     friend class Timeout;
     Timeout * _timeout;
     bool  _timeoutHappened;
@@ -78,6 +79,9 @@ static const int MEAT_SHOP_CAPACITY = 2;
 static const int MEAT_SHOP_TIME = 1 * MINUTE;
 static const int MEAT_SHOP_TIMEOUT = 3 * MINUTE;
 
+static const int BOSS_COMMING_TIME = 5 * MINUTE;
+static const int BOSS_PROBLEM_SOLVING_TIME = 90 * SECOND;
+
 Store trolleys("Trolleys", TROLLEY_STORE_CAPACITY);
 int timeoutTrolleyCount = 0;
 
@@ -89,6 +93,11 @@ Histogram shoppingKind("Shopping kind", 0, MINUTE, 10);
 
 int timeoutMeatShopCount = 0;
 Store meatShop("meat shop", MEAT_SHOP_CAPACITY);
+
+int returningCustomersCount = 0;
+
+Facility boss("boss");
+int employeeMistakeCount = 0;
 
 class Customer : public TimeoutableProcess {
 
@@ -102,6 +111,9 @@ class Customer : public TimeoutableProcess {
         } else {
             cancelTimeout();
         }
+
+        // goto for easy re-entering if the customer has forgotten something
+        start_shopping:
 
         Seize(gate);
         Wait(GATE_ENTERING_TIME);
@@ -140,6 +152,16 @@ class Customer : public TimeoutableProcess {
         // cash register process
         Wait(Exponential(CASH_REGISTER_TIME));
 
+        decision = Random();
+        if(decision > 0.95){
+            // employee has made a mistake and need to call the boss
+            employeeMistakeCount++;
+            Seize(boss);
+            Wait(Exponential(BOSS_COMMING_TIME));
+            Wait(Exponential(BOSS_PROBLEM_SOLVING_TIME));
+            Release(boss);
+        }
+
         Release(*withShortestQueue);
 
         decision = Random();
@@ -162,7 +184,12 @@ class Customer : public TimeoutableProcess {
             Leave(meatShop);
         }
 
-        
+        decision = Random();
+        if(decision > 0.95){
+            //customer forgot something and will return to the shop
+            returningCustomersCount++;
+            goto start_shopping;
+        }
         Leave(trolleys);
     }
 };
@@ -185,7 +212,10 @@ int main() {
         fac.Output();
     }
     meatShop.Output();
+    boss.Output();
+    std::cout << "Customers that had forgotten something and had to re-enter the shop " << returningCustomersCount << std::endl;
     std::cout << "Timeouted customers in trolley store " << timeoutTrolleyCount << std::endl;
     std::cout << "Timeouted customers in meat shop " << timeoutMeatShopCount << std::endl;
+    std::cout << "Number of mistakes the employees made " << employeeMistakeCount << std::endl;
     return 0;
 }
