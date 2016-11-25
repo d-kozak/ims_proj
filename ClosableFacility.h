@@ -22,13 +22,19 @@ class AlwaysTrue : public ClosableFacilityCondition{
     }
 };
 
+class AlwaysFalse : public ClosableFacilityCondition{
+    virtual bool closingCondition(){
+        return false;
+    }
+};
+
 class ClosableFacility : public Facility {
     bool _isOpen;
 
     ClosableFacilityCondition *_closingCondition;
 
 public:
-    ClosableFacility():Facility(),_closingCondition(new AlwaysTrue()),_isOpen(true){}
+    ClosableFacility():Facility(),_closingCondition(new AlwaysFalse()),_isOpen(true){}
     ClosableFacility(ClosableFacilityCondition *closingCondition)
             : Facility(), _closingCondition(closingCondition), _isOpen(true) {}
 
