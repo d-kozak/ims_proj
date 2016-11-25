@@ -1,5 +1,6 @@
 #include <iostream>
 #include "simlib.h"
+#include "ClosableFacility.h"
 
 
 /**
@@ -87,7 +88,7 @@ int timeoutTrolleyCount = 0;
 
 Facility gate("Gate");
 
-Facility cashRegisters[CASH_REGISTER_SIZE];
+ClosableFacility cashRegisters[CASH_REGISTER_SIZE];
 
 Histogram shoppingKind("Shopping kind", 0, MINUTE, 10);
 
@@ -139,10 +140,10 @@ class Customer : public TimeoutableProcess {
         // after shopping client goes to the cash registers
         // and picks the one with shortest queue
         Facility *withShortestQueue = &cashRegisters[0];
-        int min = cashRegisters[0].Q1->size();
+        int min = cashRegisters[0].QueueLen();
         for (int i = 0; i < CASH_REGISTER_SIZE; i++) {
-            if (min > cashRegisters[i].Q1->size()) {
-                min = cashRegisters[i].Q1->size();
+            if (min > cashRegisters[i].QueueLen()) {
+                min = cashRegisters[i].QueueLen();
                 withShortestQueue = &cashRegisters[i];
             }
         }
