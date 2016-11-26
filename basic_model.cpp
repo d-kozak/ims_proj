@@ -4,6 +4,7 @@
 #include "ClosableFacility.h"
 #include "MaintainableClosableFacility.h"
 #include "internal.h"
+#include "FacilityInvalidStateException.h"
 
 
 /**
@@ -119,7 +120,7 @@ int employeeMistakeCount = 0;
 int countActiveCashRegisters() {
     int count = 0;
     for (MaintainableClosableFacility &fac : cashRegisters) {
-        if (fac.isFacilityAvailable()) {
+        if (fac.isOpen()) {
             count++;
         }
     }
@@ -131,7 +132,7 @@ float countAverageCashRegisterQueueLen() {
     int activeQueues = 0;
 
     for (MaintainableClosableFacility &fac : cashRegisters) {
-        if (fac.isFacilityAvailable()) {
+        if (fac.isOpen()) {
             activeQueues++;
             queueCount += fac.QueueLen();
         }
@@ -141,14 +142,30 @@ float countAverageCashRegisterQueueLen() {
 
 MaintainableClosableFacility & findFirstClosedCashRegister(){
     for(MaintainableClosableFacility & fac : cashRegisters){
-        if(!fac.isOpen() && !fac.isShuttingDown())
+        if(!fac.isOpen())
             return fac;
     }
+    throw FacilityInvalidStateException("No suitable cash register found");
 }
 
 class CashRegisterClosingCondition : public ClosableFacilityCondition {
     virtual bool closingCondition(ClosableFacility *fac) {
-        return false;
+//        return fac->QueueLen() < 4 && atLeastTwoCashRegistersAreWorking();
+        return countAverageCashRegisterQueueLen() < 4 && atLeastTwoCashRegistersAreWorking();
+    }
+
+
+    /**
+     * It is only possible to close the facility if there is at least another one open
+     * which means there have to be two open facilities
+     * @return
+     */
+    bool atLeastTwoCashRegistersAreWorking(){
+        int workingRegisters = 0;
+        for(MaintainableClosableFacility & fac : cashRegisters)
+            if(fac.isFacilityAvailable())
+                workingRegisters++;
+        return workingRegisters > 1;
     }
 
 };
@@ -279,7 +296,7 @@ class Employee : public Process {
     bool shouldGoToTheCashRegisters(){
         if(methodInvokeCount++ < 3) // small hack to make first three employees go to the cash registers event if no customers are in the shop yet
             return true;
-        return (countAverageCashRegisterQueueLen() > 5 && countActiveCashRegisters() < CASH_REGISTER_SIZE);
+        return (countAverageCashRegisterQueueLen() > 6 && countActiveCashRegisters() < CASH_REGISTER_SIZE);
     }
 
     void Behavior() {
@@ -351,7 +368,7 @@ int main() {
         employee->Activate();
     }
     (new CustomerGenerator)->Activate();
-    (new BakeryReady)->Activate(BAKERY_BAKING_TIME);
+    (new BakeryReady)->Activate();
     Run();
     gate.Output();
     trolleys.Output();
