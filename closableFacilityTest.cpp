@@ -9,7 +9,7 @@
 
 
 class MyCondition : public ClosableFacilityCondition {
-    virtual bool closingCondition(Facility * fac){
+    virtual bool closingCondition(ClosableFacility * fac){
         return true;
     }
 };
