@@ -14,10 +14,7 @@ void ClosableFacility::close() {
 }
 
 bool ClosableFacility::checkClosingCondition() {
-    bool res = (*this->_closingCondition)();
-    if(res)
-        close();
-    return res;
+    return this->_closingCondition->operator()(this);
 }
 
 void ClosableFacility::Seize(Entity *e){

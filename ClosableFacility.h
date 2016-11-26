@@ -7,33 +7,40 @@
 
 #include "simlib.h"
 
+class ClosableFacility;
+
+/**
+ * By default, always return false
+ */
 class ClosableFacilityCondition {
-    virtual bool closingCondition() = 0;
+    virtual bool closingCondition(ClosableFacility * fac) = 0;
 
 public:
-    bool operator()() {
-        return this->closingCondition();
+    bool operator()(ClosableFacility * fac) {
+        return this->closingCondition(fac);
     }
 };
 
 class AlwaysTrue : public ClosableFacilityCondition{
-    virtual bool closingCondition(){
+    virtual bool closingCondition(ClosableFacility * fac){
         return true;
     }
 };
 
 class AlwaysFalse : public ClosableFacilityCondition{
-    virtual bool closingCondition(){
+    virtual bool closingCondition(ClosableFacility * fac){
         return false;
     }
 };
 
 class ClosableFacility : public Facility {
+    friend class ClosableFacilityCondition;
     bool _isOpen;
 
     ClosableFacilityCondition *_closingCondition;
 
 public:
+    ClosableFacility(bool isOpen):Facility(),_closingCondition(new AlwaysFalse()),_isOpen(isOpen){}
     ClosableFacility():Facility(),_closingCondition(new AlwaysFalse()),_isOpen(true){}
     ClosableFacility(ClosableFacilityCondition *closingCondition)
             : Facility(), _closingCondition(closingCondition), _isOpen(true) {}
@@ -74,7 +81,7 @@ public:
               _isOpen(isOpen) {}
 
     // overriding because default param was not working
-    virtual void Seize(Entity *e, ServicePriority_t sp = DEFAULT_PRIORITY);
+    virtual void Seize(Entity *e, ServicePriority_t sp);
 
     virtual void Seize(Entity *e);
 
@@ -82,12 +89,17 @@ public:
 
     bool checkClosingCondition();
 
-    void open();
+    virtual void open();
 
-    void close();
+    virtual void close();
 
     bool isOpen() {
         return _isOpen;
+    }
+
+    bool setClosingCondition(ClosableFacilityCondition * condition){
+        delete this->_closingCondition;
+        this->_closingCondition = condition;
     }
 
     ~ClosableFacility(){
