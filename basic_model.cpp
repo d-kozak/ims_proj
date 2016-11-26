@@ -1,6 +1,9 @@
 #include <iostream>
+#include <sstream>
 #include "simlib.h"
 #include "ClosableFacility.h"
+#include "MaintainableClosableFacility.h"
+#include "internal.h"
 
 
 /**
@@ -88,7 +91,7 @@ int timeoutTrolleyCount = 0;
 
 Facility gate("Gate");
 
-ClosableFacility cashRegisters[CASH_REGISTER_SIZE];
+MaintainableClosableFacility cashRegisters[CASH_REGISTER_SIZE];
 
 Histogram shoppingKind("Shopping kind", 0, MINUTE, 10);
 
@@ -99,6 +102,13 @@ int returningCustomersCount = 0;
 
 Facility boss("boss");
 int employeeMistakeCount = 0;
+
+class CashRegisterClosingCondition : public ClosableFacilityCondition{
+    virtual bool closingCondition(ClosableFacility * fac){
+        return false;
+    }
+
+};
 
 class Customer : public TimeoutableProcess {
 
@@ -139,13 +149,21 @@ class Customer : public TimeoutableProcess {
 
         // after shopping client goes to the cash registers
         // and picks the one with shortest queue
-        Facility *withShortestQueue = &cashRegisters[0];
-        int min = cashRegisters[0].QueueLen();
+        Facility *withShortestQueue = nullptr;
+        int min = INT32_MAX;
         for (int i = 0; i < CASH_REGISTER_SIZE; i++) {
+            if(!cashRegisters[i].isFacilityAvailable())
+                continue;
+
             if (min > cashRegisters[i].QueueLen()) {
                 min = cashRegisters[i].QueueLen();
                 withShortestQueue = &cashRegisters[i];
             }
+        }
+
+        if(withShortestQueue == nullptr){
+            std::cerr << "Internal error, no cash resgister is open" << std::endl;
+            exit(2);
         }
 
         Seize(*withShortestQueue);
@@ -195,7 +213,19 @@ class Customer : public TimeoutableProcess {
     }
 };
 
-class Generator : public Event {
+int count = 0;
+class Employee : public Process{
+    void Behavior(){
+        std::stringstream ss;
+        ss << "Employee" << count;
+        std::string TAG = ss.str();
+        log(TAG,"starting");
+        cashRegisters[count++].open(this);
+        log(TAG,"finishing");
+    }
+};
+
+class CustomerGenerator : public Event {
     void Behavior() {
         (new Customer)->Activate();
         Activate(Time + Exponential(CUSTUMER_CREATION_TIME));
@@ -204,7 +234,12 @@ class Generator : public Event {
 
 int main() {
     Init(0, SIMULATION_END_TIME);
-    (new Generator)->Activate();
+    for(MaintainableClosableFacility & fac : cashRegisters){
+        fac.setClosingCondition(new CashRegisterClosingCondition());
+        Employee * employee = new Employee();
+        employee->Activate();
+    }
+    (new CustomerGenerator)->Activate();
     Run();
     gate.Output();
     trolleys.Output();

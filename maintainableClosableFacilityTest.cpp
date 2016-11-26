@@ -6,9 +6,8 @@
 #include "FacilityInvalidStateException.h"
 #include <iostream>
 
-void log(std::string prefix, std::string &&msg) {
-    std::cout << "---> " << prefix << " : " << msg << std::endl;
-}
+#include "internal.h"
+
 
 class MyCon : public ClosableFacilityCondition {
     virtual bool closingCondition(ClosableFacility *fac) {
@@ -37,7 +36,7 @@ class MyProc : public Process {
     }
 };
 
-class Generator : public Event {
+class CustomerGenerator : public Event {
     int count = 0;
 
     void Behavior() {
@@ -56,7 +55,7 @@ class MaintainingProc : public Process {
             fac.open(this);
             log(TAG, "finishing the maintenance");
 
-            (new Generator)->Activate();
+            (new CustomerGenerator)->Activate();
             Wait(60);
 
 
@@ -72,7 +71,7 @@ class MaintainingProc : public Process {
 
 int main(void) {
     Init(0, 10000);
-    (new Generator)->Activate();
+    (new CustomerGenerator)->Activate();
     (new MaintainingProc)->Activate(200);
     Run();
     fac.Output();
