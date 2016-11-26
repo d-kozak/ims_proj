@@ -15,17 +15,18 @@ class TimeoutableProcess;
 class Timeout : public Event {
     TimeoutableProcess *_process;
 public:
-    Timeout(TimeoutableProcess * process) : Event(), _process(process) {};
+    Timeout(TimeoutableProcess *process) : Event(), _process(process) {};
 
     void Behavior();
 
 };
 
-class TimeoutableProcess : public Process{
+class TimeoutableProcess : public Process {
     // TODO use behaviour parametrization design pattern for clearer timeout
     friend class Timeout;
-    Timeout * _timeout;
-    bool  _timeoutHappened;
+
+    Timeout *_timeout;
+    bool _timeoutHappened;
 protected:
     void cancelTimeout() {
         _timeoutHappened = false;
@@ -37,12 +38,14 @@ protected:
         this->_timeout = new Timeout(this);
         this->_timeout->Activate(Time + time);
     }
+
     void timeout() {
         _timeoutHappened = true;
         Out();
         Activate();
     }
-    bool wasTimeouted(){
+
+    bool wasTimeouted() {
         return _timeoutHappened;
     }
 };
@@ -86,6 +89,16 @@ static const int MEAT_SHOP_TIMEOUT = 3 * MINUTE;
 static const int BOSS_COMMING_TIME = 5 * MINUTE;
 static const int BOSS_PROBLEM_SOLVING_TIME = 90 * SECOND;
 
+static const int STOCK_TIME = 30 * MINUTE;
+static const int BAKERY_WORK_TIME = 20 * MINUTE;
+static const int BAKERY_BAKING_TIME = 1 * HOUR;
+
+static const int BREAK_TIME = 30 * MINUTE;
+
+static const int BREAK_CAPACITY = 2;
+int currentBreakCount = 0;
+
+
 Store trolleys("Trolleys", TROLLEY_STORE_CAPACITY);
 int timeoutTrolleyCount = 0;
 
@@ -103,8 +116,38 @@ int returningCustomersCount = 0;
 Facility boss("boss");
 int employeeMistakeCount = 0;
 
-class CashRegisterClosingCondition : public ClosableFacilityCondition{
-    virtual bool closingCondition(ClosableFacility * fac){
+int countActiveCashRegisters() {
+    int count = 0;
+    for (MaintainableClosableFacility &fac : cashRegisters) {
+        if (fac.isFacilityAvailable()) {
+            count++;
+        }
+    }
+    return count;
+}
+
+float countAverageCashRegisterQueueLen() {
+    float queueCount = 0;
+    int activeQueues = 0;
+
+    for (MaintainableClosableFacility &fac : cashRegisters) {
+        if (fac.isFacilityAvailable()) {
+            activeQueues++;
+            queueCount += fac.QueueLen();
+        }
+    }
+    return queueCount / activeQueues;
+}
+
+MaintainableClosableFacility & findFirstClosedCashRegister(){
+    for(MaintainableClosableFacility & fac : cashRegisters){
+        if(!fac.isOpen() && !fac.isShuttingDown())
+            return fac;
+    }
+}
+
+class CashRegisterClosingCondition : public ClosableFacilityCondition {
+    virtual bool closingCondition(ClosableFacility *fac) {
         return false;
     }
 
@@ -152,7 +195,7 @@ class Customer : public TimeoutableProcess {
         Facility *withShortestQueue = nullptr;
         int min = INT32_MAX;
         for (int i = 0; i < CASH_REGISTER_SIZE; i++) {
-            if(!cashRegisters[i].isFacilityAvailable())
+            if (!cashRegisters[i].isFacilityAvailable())
                 continue;
 
             if (min > cashRegisters[i].QueueLen()) {
@@ -161,7 +204,7 @@ class Customer : public TimeoutableProcess {
             }
         }
 
-        if(withShortestQueue == nullptr){
+        if (withShortestQueue == nullptr) {
             std::cerr << "Internal error, no cash resgister is open" << std::endl;
             exit(2);
         }
@@ -172,7 +215,7 @@ class Customer : public TimeoutableProcess {
         Wait(Exponential(CASH_REGISTER_TIME));
 
         decision = Random();
-        if(decision > 0.95){
+        if (decision > 0.95) {
             // employee has made a mistake and need to call the boss
             employeeMistakeCount++;
             Seize(boss);
@@ -204,7 +247,7 @@ class Customer : public TimeoutableProcess {
         }
 
         decision = Random();
-        if(decision > 0.95){
+        if (decision > 0.95) {
             //customer forgot something and will return to the shop
             returningCustomersCount++;
             goto start_shopping;
@@ -213,15 +256,83 @@ class Customer : public TimeoutableProcess {
     }
 };
 
+typedef enum {
+    CASH_REGISTER, BAKERY, STOCK, BREAK
+} EmployeeState;
+
+bool bakeryReady = false;
+class BakeryReady : public Event {
+    void Behavior() {
+        bakeryReady = true;
+    }
+};
+
 int count = 0;
-class Employee : public Process{
-    void Behavior(){
+int methodInvokeCount = 1;
+class Employee : public Process {
+    bool hasTakenBreak = false;
+
+    bool shouldTakeBreak(){
+        return !hasTakenBreak && currentBreakCount < BREAK_CAPACITY;
+    }
+
+    bool shouldGoToTheCashRegisters(){
+        if(methodInvokeCount++ < 3) // small hack to make first three employees go to the cash registers event if no customers are in the shop yet
+            return true;
+        return (countAverageCashRegisterQueueLen() > 5 && countActiveCashRegisters() < CASH_REGISTER_SIZE);
+    }
+
+    void Behavior() {
+        EmployeeState state;
         std::stringstream ss;
-        ss << "Employee" << count;
+        ss << "Employee" << count++;
         std::string TAG = ss.str();
-        log(TAG,"starting");
-        cashRegisters[count++].open(this);
-        log(TAG,"finishing");
+        log(TAG, "starting");
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-noreturn"
+        while (true) {
+            if (bakeryReady) {
+                state = BAKERY;
+            } else if (shouldGoToTheCashRegisters()) {
+                state = CASH_REGISTER;
+            } else if (shouldTakeBreak())
+                state = BREAK;
+            else state = STOCK;
+
+            switch (state) {
+                case CASH_REGISTER: {
+                    log(TAG, "started at cash register");
+                    MaintainableClosableFacility &fac = findFirstClosedCashRegister();
+                    fac.open(this);
+                    log(TAG, "finished at cash register");
+                    break;
+                }
+                case BAKERY: {
+                    log(TAG, "started baking");
+                    bakeryReady = false;
+                    Wait(Exponential(BAKERY_WORK_TIME));
+                    (new BakeryReady)->Activate(Time + BAKERY_BAKING_TIME);
+                    log(TAG, "finished baking");
+                    break;
+                }
+                case STOCK: {
+                    log(TAG, "started stock");
+                    Wait(Exponential(STOCK_TIME));
+                    log(TAG, "finished stock");
+                    break;
+                }
+                case BREAK: {
+                    log(TAG, "started break");
+                    currentBreakCount++;
+                    hasTakenBreak = true;
+                    Wait(BREAK_TIME);
+                    currentBreakCount--;
+                    log(TAG, "finished break");
+                    break;
+                }
+            }
+        }
+#pragma clang diagnostic pop
     }
 };
 
@@ -234,12 +345,13 @@ class CustomerGenerator : public Event {
 
 int main() {
     Init(0, SIMULATION_END_TIME);
-    for(MaintainableClosableFacility & fac : cashRegisters){
+    for (MaintainableClosableFacility &fac : cashRegisters) {
         fac.setClosingCondition(new CashRegisterClosingCondition());
-        Employee * employee = new Employee();
+        Employee *employee = new Employee();
         employee->Activate();
     }
     (new CustomerGenerator)->Activate();
+    (new BakeryReady)->Activate(BAKERY_BAKING_TIME);
     Run();
     gate.Output();
     trolleys.Output();
@@ -249,7 +361,8 @@ int main() {
     }
     meatShop.Output();
     boss.Output();
-    std::cout << "Customers that had forgotten something and had to re-enter the shop " << returningCustomersCount << std::endl;
+    std::cout << "Customers that had forgotten something and had to re-enter the shop " << returningCustomersCount
+              << std::endl;
     std::cout << "Timeouted customers in trolley store " << timeoutTrolleyCount << std::endl;
     std::cout << "Timeouted customers in meat shop " << timeoutMeatShopCount << std::endl;
     std::cout << "Number of mistakes the employees made " << employeeMistakeCount << std::endl;
