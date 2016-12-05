@@ -294,6 +294,7 @@ class Customer : public TimeoutableProcess {
         }
 
         if (withShortestQueue == nullptr) {
+            // this should never happen, in our interpretation of system one cash register is always open
             std::cerr << "Internal error, no cash resgister is open" << std::endl;
             exit(2);
         }
@@ -423,7 +424,7 @@ class Employee : public Process {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
         /**
-         * his behavior is an infitini loop in which different jobs are done
+         * his behavior is an infitine loop in which different jobs are done
          */
         while (true) {
             if (bakeryReady) {
