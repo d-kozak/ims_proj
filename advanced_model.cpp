@@ -89,6 +89,8 @@ static const int CASH_REGISTER_TIME = 90 * SECOND;
 static const int SELF_SERVICE_CASH_REGISTER_TIME = 180 * SECOND;
 static const int CASH_RETURNING_REGISTER_TIME = 30 * SECOND;
 
+static const int SELF_SERVICE_EMPLOYEE_HELP_TIME = 20 * SECOND;
+
 static const int CASH_REGISTER_SIZE = 5;
 static const int SELF_SERVICE_CASH_REGISTER_SIZE = 6;
 static const int EMPLOYEE_COUNT = 7;
@@ -145,9 +147,19 @@ MaintainableClosableFacility cashRegisters[CASH_REGISTER_SIZE];
 Store selfServiceCashRegisters("Self-service cash registers", SELF_SERVICE_CASH_REGISTER_SIZE);
 
 /**
+ * Self service employee
+ */
+Facility selfServiceCashRegisterEmployee("Self service employee");
+
+/**
  * number of customers that used self serving cash registers
  */
 int selfServiceCashRegisterCount = 0;
+
+/**
+ * number of customers that needed help when using self service cash register
+ */
+int selfServiceCustomerNeedsHelpCount = 0;
 
 /**
  * Hustogram representing different categories for shopping time - short, medium,long
@@ -306,6 +318,15 @@ class Customer : public TimeoutableProcess {
                 Wait(Exponential(CASH_RETURNING_REGISTER_TIME));
             else
                 Wait(Exponential(SELF_SERVICE_CASH_REGISTER_TIME));
+
+
+            decision = Random();
+            if(decision > 0.9){
+                selfServiceCustomerNeedsHelpCount++;
+                Seize(selfServiceCashRegisterEmployee);
+                Wait(Exponential(SELF_SERVICE_EMPLOYEE_HELP_TIME));
+                Release(selfServiceCashRegisterEmployee);
+            }
 
             Leave(selfServiceCashRegisters);
 
@@ -571,14 +592,16 @@ int main() {
     selfServiceCashRegisters.Output();
     meatShop.Output();
     boss.Output();
+    selfServiceCashRegisterEmployee.Output();
     std::cout << "The number of all customers  " << customerCount << std::endl;
     std::cout << "Customers that had forgotten something and had to re-enter the shop " << returningCustomersCount
               << std::endl;
     std::cout << "Timeouted customers in trolley store " << timeoutTrolleyCount << std::endl;
     std::cout << "Timeouted customers in meat shop " << timeoutMeatShopCount << std::endl;
     std::cout << "Number of mistakes the employees made " << employeeMistakeCount << std::endl;
-    std::cout << "Number of customers that used self serving cash registers " << selfServiceCashRegisterCount
-              << std::endl;
+    std::cout << "Number of customers that used self serving cash registers " << selfServiceCashRegisterCount << std::endl;
+    std::cout << "Number of customers that needed help when using self service cash register " << selfServiceCustomerNeedsHelpCount << std::endl;
+
 
     return 0;
 }
