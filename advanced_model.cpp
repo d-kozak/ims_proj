@@ -86,10 +86,12 @@ static const int SHOPPING_TIME = 20 * MINUTE;
 
 
 static const int CASH_REGISTER_TIME = 90 * SECOND;
+static const int SELF_SERVICE_CASH_REGISTER_TIME = 180 * SECOND;
 static const int CASH_RETURNING_REGISTER_TIME = 30 * SECOND;
 
-static const int CASH_REGISTER_SIZE = 7;
-static const int EMPLOYEE_COUNT = 8;
+static const int CASH_REGISTER_SIZE = 5;
+static const int SELF_SERVICE_CASH_REGISTER_SIZE = 6;
+static const int EMPLOYEE_COUNT = 7;
 
 static const int MEAT_SHOP_CAPACITY = 2;
 static const int MEAT_SHOP_TIME = 1 * MINUTE;
@@ -138,11 +140,21 @@ Facility gate("Gate");
 MaintainableClosableFacility cashRegisters[CASH_REGISTER_SIZE];
 
 /**
+ * self service cash registers
+ */
+Store selfServiceCashRegisters("Self-service cash registers", SELF_SERVICE_CASH_REGISTER_SIZE);
+
+/**
+ * number of customers that used self serving cash registers
+ */
+int selfServiceCashRegisterCount = 0;
+
+/**
  * Hustogram representing different categories for shopping time - short, medium,long
  */
 Histogram shoppingKind("Shopping kind", 0, 3 * MINUTE, 45);
 
-Histogram cashRegisterWaitTime("CashRegisterWaitTime",0,5*MINUTE,8);
+Histogram cashRegisterWaitTime("CashRegisterWaitTime", 0, 5 * MINUTE, 8);
 
 /**
  * number of customer who were timeouted waiting for some meat
@@ -270,6 +282,7 @@ class Customer : public TimeoutableProcess {
         // decide how big the shopping will be
         double decision;
         double shoppingTime;
+        double queueWaitTime;
 
         if (isCustomerReturning)
             shoppingTime = Exponential(RETURNING_SHOPPING_TIME);
@@ -279,52 +292,72 @@ class Customer : public TimeoutableProcess {
         Wait(shoppingTime);
         shoppingKind(shoppingTime);
 
-
-        // after shopping client goes to the cash registers
-        // and picks the one with shortest queue
-        Facility *withShortestQueue = nullptr;
-        int min = INT32_MAX;
-        for (int i = 0; i < CASH_REGISTER_SIZE; i++) {
-            if (!cashRegisters[i].isFacilityAvailable())
-                continue;
-
-            if (min > cashRegisters[i].QueueLen()) {
-                min = cashRegisters[i].QueueLen();
-                withShortestQueue = &cashRegisters[i];
-            }
-        }
-
-        if (withShortestQueue == nullptr) {
-            // this should never happen, in our interpretation of system one cash register is always open
-            std::cerr << "Internal error, no cash resgister is open" << std::endl;
-            exit(2);
-        }
-
-
-        double queueWaitTime = Time;
-        // wait in the queue until cash register is avalable
-        Seize(*withShortestQueue);
-        cashRegisterWaitTime(Time - queueWaitTime);
-
-        // cash register process
-        if(isCustomerReturning)
-            Wait(Exponential(CASH_RETURNING_REGISTER_TIME));
-        else
-            Wait(Exponential(CASH_REGISTER_TIME));
-
-
-        // in 3% of cases the employee makes a mistake and nees to call the boss to helo him
         decision = Random();
-        if (decision > 0.97) {
-            // employee has made a mistake and need to call the boss
-            employeeMistakeCount++;
-            Seize(boss);
-            Wait(Exponential(BOSS_COMMING_TIME));
-            Wait(Exponential(BOSS_PROBLEM_SOLVING_TIME));
-            Release(boss);
-        }
+        if (decision > 0.7 && selfServiceCashRegisters.QueueLen() < 10) {
+            // SELF-SERVICE CASH REGISTERS
+            selfServiceCashRegisterCount++;
 
-        Release(*withShortestQueue);
+            queueWaitTime = Time;
+            Enter(selfServiceCashRegisters);
+            cashRegisterWaitTime(Time - queueWaitTime);
+
+            // cash register process
+            if (isCustomerReturning)
+                Wait(Exponential(CASH_RETURNING_REGISTER_TIME));
+            else
+                Wait(Exponential(SELF_SERVICE_CASH_REGISTER_TIME));
+
+            Leave(selfServiceCashRegisters);
+
+        } else {
+            // NORMAL CASH REGISTER
+
+            // after shopping client goes to the cash registers
+            // and picks the one with shortest queue
+            Facility *withShortestQueue = nullptr;
+            int min = INT32_MAX;
+            for (int i = 0; i < CASH_REGISTER_SIZE; i++) {
+                if (!cashRegisters[i].isFacilityAvailable())
+                    continue;
+
+                if (min > cashRegisters[i].QueueLen()) {
+                    min = cashRegisters[i].QueueLen();
+                    withShortestQueue = &cashRegisters[i];
+                }
+            }
+
+            if (withShortestQueue == nullptr) {
+                // this should never happen, in our interpretation of system one cash register is always open
+                std::cerr << "Internal error, no cash resgister is open" << std::endl;
+                exit(2);
+            }
+
+
+            queueWaitTime = Time;
+            // wait in the queue until cash register is avalable
+            Seize(*withShortestQueue);
+            cashRegisterWaitTime(Time - queueWaitTime);
+
+
+            // cash register process
+            if (isCustomerReturning)
+                Wait(Exponential(CASH_RETURNING_REGISTER_TIME));
+            else
+                Wait(Exponential(CASH_REGISTER_TIME));
+
+            // in 3% of cases the employee makes a mistake and nees to call the boss to helo him
+            decision = Random();
+            if (decision > 0.97) {
+                // employee has made a mistake and need to call the boss
+                employeeMistakeCount++;
+                Seize(boss);
+                Wait(Exponential(BOSS_COMMING_TIME));
+                Wait(Exponential(BOSS_PROBLEM_SOLVING_TIME));
+                Release(boss);
+            }
+
+            Release(*withShortestQueue);
+        }
 
         // 20% of customers will want to buy some meat
         decision = Random();
@@ -511,13 +544,12 @@ int main() {
     long int ms = tp.tv_sec * 1000 + tp.tv_usec / 1000;
     RandomSeed(ms);
     // init the cash registers and activate employees
-    const char* cashRegisterName = "Cash register";
-    int suffixNum = 1;
+    const char *cashRegisterName = "Cash register";
     for (MaintainableClosableFacility &fac : cashRegisters) {
         fac.setClosingCondition(new CashRegisterClosingCondition());
         fac.SetName(cashRegisterName);
     }
-    for(int i = 0 ; i < EMPLOYEE_COUNT; i++){
+    for (int i = 0; i < EMPLOYEE_COUNT; i++) {
         (new Employee())->Activate();
     }
 
@@ -536,6 +568,7 @@ int main() {
         fac.Output();
     }
     cashRegisterWaitTime.Output();
+    selfServiceCashRegisters.Output();
     meatShop.Output();
     boss.Output();
     std::cout << "The number of all customers  " << customerCount << std::endl;
@@ -544,5 +577,8 @@ int main() {
     std::cout << "Timeouted customers in trolley store " << timeoutTrolleyCount << std::endl;
     std::cout << "Timeouted customers in meat shop " << timeoutMeatShopCount << std::endl;
     std::cout << "Number of mistakes the employees made " << employeeMistakeCount << std::endl;
+    std::cout << "Number of customers that used self serving cash registers " << selfServiceCashRegisterCount
+              << std::endl;
+
     return 0;
 }
