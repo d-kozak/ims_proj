@@ -7,6 +7,8 @@
 #include "FacilityInvalidStateException.h"
 
 
+#include <sys/time.h>
+
 /**
  * "Library" section
  * It contains extensions for simlib classes which proved to be useful in our project
@@ -73,7 +75,7 @@ static const int HOUR = MINUTE * 60;
  */
 static const int SIMULATION_END_TIME = 3 * HOUR;
 
-static const int CUSTUMER_CREATION_TIME = 10;
+static const int CUSTUMER_CREATION_TIME = 11 * SECOND;
 static const int GATE_ENTERING_TIME = 3;
 
 static const int TROLLEY_STORE_CAPACITY = 200;
@@ -100,6 +102,12 @@ static const int BAKERY_BAKING_TIME = 1 * HOUR;
 static const int BREAK_TIME = 30 * MINUTE;
 
 static const int BREAK_CAPACITY = 2;
+
+
+/**
+ * the number of all customers
+ */
+int customerCount = 0;
 
 /**
  * number of employees having a break
@@ -229,6 +237,11 @@ class CashRegisterClosingCondition : public ClosableFacilityCondition {
  */
 class Customer : public TimeoutableProcess {
 
+    /**
+     * specifies returing customers, they will always do small shopping - only get the thinks they have forgotten
+     */
+    bool isCustomerReturning = false;
+
     void Behavior() {
         setTimeout(TROLLEY_TIMEOUT);
         Enter(trolleys);
@@ -251,7 +264,7 @@ class Customer : public TimeoutableProcess {
         // decide how big the shopping will be
         double decision = Random();
         double shoppingTime;
-        if (decision < 0.33) {
+        if (decision < 0.33 || isCustomerReturning) {
             //small shopping
             shoppingTime = Exponential(SMALL_SHOPPING_TIME);
         } else if (decision < 0.66) {
@@ -292,9 +305,9 @@ class Customer : public TimeoutableProcess {
         Wait(Exponential(CASH_REGISTER_TIME));
 
 
-        // in 5% of cases the employee makes a mistake and nees to call the boss to helo him
+        // in 3% of cases the employee makes a mistake and nees to call the boss to helo him
         decision = Random();
-        if (decision > 0.95) {
+        if (decision > 0.97) {
             // employee has made a mistake and need to call the boss
             employeeMistakeCount++;
             Seize(boss);
@@ -331,6 +344,7 @@ class Customer : public TimeoutableProcess {
         if (decision > 0.95) {
             //customer forgot something and will return to the shop
             returningCustomersCount++;
+            isCustomerReturning = true;
             goto start_shopping;
         }
         Leave(trolleys);
@@ -472,6 +486,7 @@ class Employee : public Process {
  */
 class CustomerGenerator : public Event {
     void Behavior() {
+        customerCount++;
         (new Customer)->Activate();
         Activate(Time + Exponential(CUSTUMER_CREATION_TIME));
     }
@@ -483,7 +498,10 @@ class CustomerGenerator : public Event {
  */
 int main() {
     Init(0, SIMULATION_END_TIME); //init the simulation
-
+    struct timeval tp;
+    gettimeofday(&tp, NULL);
+    long int ms = tp.tv_sec * 1000 + tp.tv_usec / 1000;
+    RandomSeed(ms);
     // init the cash registers and activate employees
     for (MaintainableClosableFacility &fac : cashRegisters) {
         fac.setClosingCondition(new CashRegisterClosingCondition());
@@ -506,6 +524,7 @@ int main() {
     }
     meatShop.Output();
     boss.Output();
+    std::cout << "The number of all customers  " << customerCount << std::endl;
     std::cout << "Customers that had forgotten something and had to re-enter the shop " << returningCustomersCount
               << std::endl;
     std::cout << "Timeouted customers in trolley store " << timeoutTrolleyCount << std::endl;
