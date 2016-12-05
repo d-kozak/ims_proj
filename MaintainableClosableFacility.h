@@ -80,6 +80,14 @@ public:
     {
         return isOpen() && !isShuttingDown();
     }
+
+    /**
+     *
+     * @return true if there is a process that is maintaining the facility
+     */
+    bool isFacilityMaintained(){
+        return this->_directingProcess != nullptr;
+    }
 };
 
 

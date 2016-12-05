@@ -11,7 +11,7 @@
  * @param msg the actual message to be logged
  */
 void log(std::string prefix, std::string &&msg) {
-    std::cout << "---> " << prefix << " : " << msg << std::endl;
+    std::cout << "(" << Time << ")" << "---> " << prefix << " : " << msg  << std::endl;
 }
 
 #endif //IMS_PROJ_INTERNAL_H

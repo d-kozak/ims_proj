@@ -75,25 +75,27 @@ static const int HOUR = MINUTE * 60;
  */
 static const int SIMULATION_END_TIME = 3 * HOUR;
 
-static const int CUSTUMER_CREATION_TIME = 11 * SECOND;
+static const int CUSTUMER_CREATION_TIME = 18 * SECOND;
 static const int GATE_ENTERING_TIME = 3;
 
-static const int TROLLEY_STORE_CAPACITY = 200;
+static const int TROLLEY_STORE_CAPACITY = 300;
 static const int TROLLEY_TIMEOUT = 10 * SECOND;
 
-static const int SMALL_SHOPPING_TIME = 7 * MINUTE;
-static const int MEDIUM_SHOPPING_TIME = 14 * MINUTE;
-static const int BIG_SHOPPING_TIME = 30 * MINUTE;
+static const int RETURNING_SHOPPING_TIME = 3 * MINUTE;
+static const int SHOPPING_TIME = 20 * MINUTE;
 
-static const int CASH_REGISTER_TIME = 1 * MINUTE;
+
+static const int CASH_REGISTER_TIME = 90 * SECOND;
+static const int CASH_RETURNING_REGISTER_TIME = 30 * SECOND;
+
 static const int CASH_REGISTER_SIZE = 7;
 
 static const int MEAT_SHOP_CAPACITY = 2;
 static const int MEAT_SHOP_TIME = 1 * MINUTE;
 static const int MEAT_SHOP_TIMEOUT = 3 * MINUTE;
 
-static const int BOSS_COMMING_TIME = 5 * MINUTE;
-static const int BOSS_PROBLEM_SOLVING_TIME = 90 * SECOND;
+static const int BOSS_COMMING_TIME = 3 * MINUTE;
+static const int BOSS_PROBLEM_SOLVING_TIME = 60 * SECOND;
 
 static const int STOCK_TIME = 30 * MINUTE;
 static const int BAKERY_WORK_TIME = 20 * MINUTE;
@@ -137,7 +139,9 @@ MaintainableClosableFacility cashRegisters[CASH_REGISTER_SIZE];
 /**
  * Hustogram representing different categories for shopping time - short, medium,long
  */
-Histogram shoppingKind("Shopping kind", 0, MINUTE, 10);
+Histogram shoppingKind("Shopping kind", 0, 3 * MINUTE, 45);
+
+Histogram cashRegisterWaitTime("CashRegisterWaitTime",0,5*MINUTE,8);
 
 /**
  * number of customer who were timeouted waiting for some meat
@@ -165,10 +169,10 @@ int employeeMistakeCount = 0;
 /**
  * @return the number of active cash registers
  */
-int countActiveCashRegisters() {
+int countMaintainedCashRegisters() {
     int count = 0;
     for (MaintainableClosableFacility &fac : cashRegisters) {
-        if (fac.isOpen()) {
+        if (fac.isFacilityMaintained()) {
             count++;
         }
     }
@@ -197,8 +201,9 @@ float countAverageCashRegisterQueueLen() {
  */
 MaintainableClosableFacility &findFirstClosedCashRegister() {
     for (MaintainableClosableFacility &fac : cashRegisters) {
-        if (!fac.isFacilityAvailable())
+        if (!fac.isFacilityMaintained())
             return fac;
+
     }
     throw FacilityInvalidStateException("No suitable cash register found");
 }
@@ -262,18 +267,13 @@ class Customer : public TimeoutableProcess {
         Release(gate);
 
         // decide how big the shopping will be
-        double decision = Random();
+        double decision;
         double shoppingTime;
-        if (decision < 0.33 || isCustomerReturning) {
-            //small shopping
-            shoppingTime = Exponential(SMALL_SHOPPING_TIME);
-        } else if (decision < 0.66) {
-            //medium shopping
-            shoppingTime = Exponential(MEDIUM_SHOPPING_TIME);
-        } else {
-            //big shopping
-            shoppingTime = Exponential(BIG_SHOPPING_TIME);
-        }
+
+        if (isCustomerReturning)
+            shoppingTime = Exponential(RETURNING_SHOPPING_TIME);
+        else
+            shoppingTime = Exponential(SHOPPING_TIME);
 
         Wait(shoppingTime);
         shoppingKind(shoppingTime);
@@ -299,11 +299,17 @@ class Customer : public TimeoutableProcess {
             exit(2);
         }
 
+
+        double queueWaitTime = Time;
         // wait in the queue until cash register is avalable
         Seize(*withShortestQueue);
+        cashRegisterWaitTime(Time - queueWaitTime);
 
         // cash register process
-        Wait(Exponential(CASH_REGISTER_TIME));
+        if(isCustomerReturning)
+            Wait(Exponential(CASH_RETURNING_REGISTER_TIME));
+        else
+            Wait(Exponential(CASH_REGISTER_TIME));
 
 
         // in 3% of cases the employee makes a mistake and nees to call the boss to helo him
@@ -319,9 +325,9 @@ class Customer : public TimeoutableProcess {
 
         Release(*withShortestQueue);
 
-        // 30% of customers will want to buy some meat
+        // 20% of customers will want to buy some meat
         decision = Random();
-        if (decision > 0.7) {
+        if (decision > 0.8) {
             // go to buy some meat
             setTimeout(MEAT_SHOP_TIMEOUT);
             Enter(meatShop);
@@ -412,7 +418,7 @@ class Employee : public Process {
         if (methodInvokeCount++ <
             3) // small hack to make first three employees go to the cash registers event if no customers are in the shop yet
             return true;
-        return (countAverageCashRegisterQueueLen() > 6 && countActiveCashRegisters() < CASH_REGISTER_SIZE);
+        return (countAverageCashRegisterQueueLen() > 6 && countMaintainedCashRegisters() < CASH_REGISTER_SIZE);
     }
 
     void Behavior() {
@@ -504,8 +510,11 @@ int main() {
     long int ms = tp.tv_sec * 1000 + tp.tv_usec / 1000;
     RandomSeed(ms);
     // init the cash registers and activate employees
+    const char* cashRegisterName = "Cash register";
+    int suffixNum = 1;
     for (MaintainableClosableFacility &fac : cashRegisters) {
         fac.setClosingCondition(new CashRegisterClosingCondition());
+        fac.SetName(cashRegisterName);
         Employee *employee = new Employee();
         employee->Activate();
     }
@@ -523,6 +532,7 @@ int main() {
     for (Facility &fac : cashRegisters) {
         fac.Output();
     }
+    cashRegisterWaitTime.Output();
     meatShop.Output();
     boss.Output();
     std::cout << "The number of all customers  " << customerCount << std::endl;
