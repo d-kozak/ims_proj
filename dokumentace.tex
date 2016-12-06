@@ -51,25 +51,54 @@ unicode,linkcolor=black]{hyperref}
 V této práci je řešena implementace modelu(viz \ref{prezentace} slide 7) obchodu s potravinami v rámci projektu do IMS.
 Na základě modelu a simulačních experimentů bude ukázáno chování systému v nejvytíženějším obodobí dne. Smyslem experimentu je demonstrovat, že pokud by v běžně velkém supermarketu některé normální pokladny byly nahrazeny samoobslužnými, bude to mít pozitivní účinek na celý systém, konkrétně řečeno dojde ke snížení průměrných i maximálních front u pokladen a ke snížení průměrné doby strávené čekáním u pokladny.
 \subsection{Autoři podílející se na práci a odborné konzultace}
-Celou práci navrhli,implementovali a zhodnotili studenti třetího ročníku bakalářského studia na FIT VUT v Brně David Kozák a Peter Miklánek. Práce byla konzultována s vedoucím prodejny, která byla modelována , a s jejími řadovými zaměstnanci. 
+Celou práci navrhli a implementovali studenti třetího ročníku bakalářského studia na FIT VUT v Brně David Kozák a Peter Miklánek. Práce byla konzultována s vedoucím prodejny, která byla modelována , a s jejími řadovými zaměstnanci. 
 \subsection{Informace o simulovaném systému}
 Pro naše experimenty jsme zvolili konkrétní supermarket Lidl ve Slatině na adrese Hviezdoslavova 1288/2. Do tohoto obchodu chodíme pravidelně nakupovat, proto jsme data pro modelování sbírali nevědomky již dlouho dobu dopředu. Obchod je dobře zařízený a většinu dne lze nákup vyřídit celkem rychle. Funguje tu až sedm pokladen, z nichž je většinou pouze několik aktivních, nicméně v intervalu mezi 16-19 hodin dochází tradičně k velkým frontám, protože lidé jezdí domů z práce a chtějí nakupovat. Čekání v těchto frontách může být velmi iritující. V rámci zlepšení situace  navrhujeme místo dvou současných pokladen zařídit 6 samoobslužných. Nejdříve tedy modelujeme současný stav obchodu a poté upravenou verzi se samoobslužnými pokladnami. Následně pomocí experimentů ověříme, zda tato změna má chtěný efekt na maximální a průměrnou délku front a snížení doby strávené ve frontě, čímž chceme dokázat, že tato změna by skutečně měla pozitivní vliv na zkušenost zákazníků.
+\subsection{Ověřování validity modelu}
+Validitu našeho modelu jsme ověřovali za pomoci naměřených dat a poznatků získaných pozorováním a měřením skutečného systému, tedy pobočky Lidlu. Veškeré výsledky získané při prvních simulacích byly porovnávány se skutečným systémem a v případně výrazných nesrovnalostí jsme náš abstraktní model několikrát upravovali, aby co nejlépe odpovídal realnému systému.
 \section{Rozbor tématu a použitých metod/metodologií}
-Vzhledem k relativně lehkému sbírání skutečných dat jsme model validovali vlastními měřeními a internetové zdroje jako například LALALAL jsme používali pro porovnání s výsledky našich měření. Po důkladné analýze jsme získali o systému následující informace. 
+Vzhledem k relativně lehkému sbírání skutečných dat jsme model validovali vlastními měřeními a internetové zdroje jako například \ref{google-shop} jsme používali pro porovnání s výsledky našich měření. Po důkladné analýze jsme získali o systému následující informace. 
 
-Prvním modelovaným procesem jsou zákazníci. Jak již bylo zmíněno výše, jeden zákazník nemusí odpovídat jednomu člověku, dochází zde k abstrakci, kdy jako jeden zákazník je brán buď jednotlivec malý kolektiv lidí nakupujících společně, například rodina. V námi zvoleném období přichází zákazníci do obchodu v intervalech daných exponenciálním rozdělením se středem 18 vtěřin. Po příchodu do obchodu si zaberou buď vozík nebo košík. Ve velice nepravděpodobném případě, že nejsou žádné vozíky ani košíky k dispozici, zákazníci 10 vteřin čekají a pokud žádný košík či vozík nezískají, odcházejí nakupovat do vedlejší prodejny. Po příchodu do obchodu musí zákazníci projít bránou, do které se vejde najednou maximálně jeden člověk. Tato akce zabere průměrně tři vteřiny. Poté probíhá samotný nákup, jehož délka je opět dána exponenciálním rozložením se středem 20 minut. Po dokončení nákupu odchází zákazníci k pokladnám a stoupnou si do nejkratší fronty. Až na ně přijde řada, vyloží svůj nákup na pokladní pás a proběhne interakce s pokladní, jejíž délka je dána exponenciálním rozložením se středem 90 sekund. V přibližně 3\% procentech případů při scanování nákupu dojde k chybě a musí být zavolána vedoucí prodejny, aby vzniklý problém vyřešila. Její příchod je dán exponenciálním rozložením se středem 3 minuty a vyřešení vzniklého problému trvá dobu danou exponenciálním rozložením se středem 1 minuta. Po dokončení nákupu ještě 20 \% lidí jde koupit maso do masny. Zde pracují dva prodavači a doba obsluhy jednoho zákazníka trvá dobu danou exponenciálním rozložením se středem 1 minuta. Pokud by zákazníci nebyli do tří minut obslouženi, z obchodu odchází. Po dokončení návštěvy masny již zákazníci vrátí svůj vozík či košík a následně odcházejí ze systému. 5\% z nich si ale ještě při odchodu uvědomí, že na něco zapomněli, a proto se do znovu obchodu vrací. Nijak je v modelu nerozlišujeme od normálních zákazníků vyjma fakt, že jejich nákup trvá výrazně kratší dobu danou exponenciálním rozložením se středem 3 minuty.
+\subsection{Použité postupy pro vytváření modelu}
+Pro vytváření abstraktního modelu byla využita Petriho síť, neboť umožňovala přehledně znázornit modelovaný systém. Pro vytváření simulačního modelu byla využita knihovna SIMLIB psaná v jazyce C++. Podrobné informace o využitých konstrukcích a algoritmech lze nalézt například v ......
 
-Druhým modelovaným procesem jsou zaměstanci prodejny. Těch je v systému stabilně 7 a jejich životní cyklus je následující. Zaměstanci mají na starost čtyři rozdílné činnosti, mezi kterými se rozhodují na základně priorit. Nejprioritnější činností je obsluha pekárny. Ta trvá dobu danou exponenciálním rozložením se středem 20 minut. Následně pekárna funguje po dobu 1 hodiny bez obsluhy, poté je potřeba ji znovu obsloužit. K pokladně se zaměstnanec přesune, pokud bude alespoň jedna pokladna uzavřena a průměrná délka front bude větší než 6 zákazníků. Podmínka o alespoň jedné uzavřené prodejně je nutná, jinak by daný zamětstnanec neměl jakou pokladnu otevřít. Zaměstanec pokladnu uzavírá, pokud je průměrná délka ve frontách kratší než 4 zákazníci. Pokud zaměstnanec nemusí jít k pekárně ani pokladnám, zbývají ještě dvě další činnosti. Zaměstnanec si může na dobu 30-ti minut vzít pauzu, nicméně na tuto pauzu má nárok pouze jednou v průběhu experimentu. Pokud není ani jedna z předchozích činností proveditelná, zaměstnanec bude po dobu 30-ti minut doplňovat zboží a poté znovu provede zhodnocení situace a případně půjde provést jinou činnost.
+Jelikož abstrakce Process a Facility neposkytovaly všechny operace, které byly pro jednoduchou tvorbu simulačního modelu vhodné, autoři dané třídy rozšiřili. Popis rozšíření je následující. 
+
+\begin{itemize}
+\item TimeoutableProcess  - Jednoduché rozšíření třídy process přidávající metody pro práce s mechanismem timeout.
+\item ClosableFacility -  Rozšíření třídy Facility, které je možné uzavřít. 
+\item MaintainableClosableFacility - Rožšíření třídy ClosableFacility, pro jehož obsluhu je potřeba vymezit proces, který se o jeho provoz stará. 
+\end{itemize}
 
 
-Info o systému
-obhajoba zdrojů
+Prvním modelovaným procesem jsou zákazníci. V námi zvoleném období přichází zákazníci do obchodu v intervalech daných exponenciálním rozdělením se středem 18 vtěřin. Část zákazníků přijede autem a parkuje na parkoviště, část jich přijde pěšky či městskou hromadnou dopravou. Po příchodu do obchodu si zákazníci zaberou buď vozík nebo košík. Ve velice nepravděpodobném případě, že nejsou žádné vozíky ani košíky k dispozici, zákazníci 10 vteřin čekají a pokud žádný košík či vozík nezískají, odcházejí nakupovat do vedlejší prodejny. Velmi malá skupina zákazníků do Lidlu vejde pouze proto, aby provedla nákup v masně, který je uvnitř budovy, ale vně samotného obchodu. Pro příchod do obchodu musí zákazníci projít bránou, do které se vejde najednou maximálně jeden člověk. Tato akce zabere průměrně tři vteřiny. Poté probíhá samotný nákup, jehož délka je opět dána exponenciálním rozložením se středem 20 minut. Po dokončení nákupu odchází zákazníci k pokladnám a stoupnou si do nejkratší fronty. Až na ně přijde řada, vyloží svůj nákup na pokladní pás a proběhne interakce s pokladní, jejíž délka je dána exponenciálním rozložením se středem 90 sekund. V přibližně 3\% procentech případů při scanování nákupu dojde k chybě a musí být zavolána vedoucí prodejny, aby vzniklý problém vyřešila. Její příchod je dán exponenciálním rozložením se středem 3 minuty a vyřešení vzniklého problému trvá dobu danou exponenciálním rozložením se středem 1 minuta. Po dokončení nákupu ještě 20 \% lidí jde koupit maso do masny. Zde pracují dva prodavači a doba obsluhy jednoho zákazníka trvá dobu danou exponenciálním rozložením se středem 1 minuta. Pokud by zákazníci nebyli do tří minut obslouženi, z obchodu odchází. Po dokončení návštěvy masny již zákazníci vrátí svůj vozík či košík a následně odcházejí ze systému. 5\% z nich si ale ještě při odchodu uvědomí, že na něco zapomněli, a proto se do znovu obchodu vrací. Nijak je v modelu nerozlišujeme od normálních zákazníků vyjma fakt, že jejich nákup trvá výrazně kratší dobu danou exponenciálním rozložením se středem 3 minuty.
 
-popis použitých postupů pro vytvoření modelu
-popis původu použitých metod / technologií
+Druhým modelovaným procesem jsou zaměstanci prodejny. Těch je v systému stabilně 7 a jejich životní cyklus je následující. Zaměstanci mají na starost čtyři rozdílné činnosti, mezi kterými se rozhodují na základně priorit. Nejprioritnější činností je obsluha pekárny. Ta trvá dobu danou exponenciálním rozložením se středem 20 minut. Následně pekárna funguje po dobu 1 hodiny bez obsluhy, poté je potřeba ji znovu obsloužit. K pokladně se zaměstnanec přesune, pokud bude alespoň jedna pokladna uzavřena a průměrná délka front bude větší než 6 zákazníků. Podmínka o alespoň jedné uzavřené prodejně je nutná, jinak by daný zamětstnanec neměl jakou pokladnu otevřít. Zaměstanec pokladnu uzavírá, pokud je průměrná délka ve frontách kratší než 4 zákazníci. Pokud zaměstnanec nemusí jít k pekárně ani pokladnám, zbývají ještě dvě další činnosti. Zaměstnanec si může na dobu 30-ti minut vzít pauzu, nicméně na tuto pauzu má nárok pouze jednou v průběhu experimentu. Pokud není ani jedna z předchozích činností proveditelná, zaměstnanec bude po dobu 30-ti minut doplňovat zboží a poté znovu provede zhodnocení situace a případně půjde provést jinou činnost. Část zaměstnanců může pracovat pouze na skladě a celý den doplňovat zboží.
 
+\section{Koncepce - modelářská témata}
+Cílem projektu je simulovat obchod v jeho nejvytíženějším období. Vzhledem k cíli práce je nutné vytvořit modely dva, první model pro současnou situaci a druhý model pro variantu se samoobslužnými pokladnami. 
 
-\includegraphics[scale=0.4,angle=90]{supermarket}
+\subsection{Tvorba abstraktního modelu}
+Vzhledem k faktu, že simulace se zaměřuje hlavně na údaje o frontách před pokladnami, je možné některé aspekty skutečného systému zanedbat. Při vytváření abstraktního modelu došlo k následujícím abstrakcím. 
+\begin{itemize}
+\item Jednotlivé osoby, pokud přijdou ve skupině a nakupují spolu, jsou modelovány jako jeden proces zákazníka.
+\item Osoby, které si pouze koupí maso v masně a poté opět odejdou, nejsou v systému modelovány vůbec, protože nepřijdou vůbec do styku s pokladnami, jejichž vlastnosti tato práce zkoumá. 
+\item Problém parkoviště a parkovacích míst je též zanedbaný, neboť při měřeních bylo zjištěno, že k jeho zaplnění nedochází.
+\item Pracovníci, kteří jsou pouze na skladě či doplňují zboží, jsou též zanedbání, neboť jejich činnost neovlivňuje situaci u pokladen. 
+\item V případě modelu se samoobslužnými pokladnami je jeden zaměstnanec přidělen k těmto pokladnám na celý den, je tudíž modelován pouze jako obslužná linka pro případné dotazy či asistenci.
+\item Košíky a vozíky jsou abstrahovány jako jedno skladiště, neboť pro účely této práce není nutné tyto dva předměty rozlišovat.   
+\end{itemize}
+
+Jako formalismus pro zápis abstraktního modelu byla zvolena Petriho síť, kterou můžete vidět na následujícím obrázku. Barvy přechodů a stavů jsou použity pouze pro zvýšení přehlednosti obrázku a také pro legendu. Jako formální definice je využita ODKAZ  \\
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.3]{supermarket}
+\caption{Petriho síť modelující supermarket}
+\end{figure}
+\section{Architektura simulačního modelu/simulátoru}
+\section{Podstata simulačních experimentů a jejich průběh}
+\section{Shrnutí simulačních experimentů a závěr}
 
 V této části popíšeme data získaná z oficiálních zdrojů lidlu a také je srovnáme s naším vlastním měřením.
 \subsection{Meření}
@@ -107,29 +136,29 @@ Naměřeno Petrem
 
 
 \textbf{Bylo by dobré naměřit více dat :) }
-\section{Koncepce}
-\subsection{Modelářská témata}
-V této části nejdříve popíšeme náš model pomocí slovního popisu a následně ho popíšeme pomocí petriho sítě. Co zanedbáváme:
-\begin{itemize}
-\item Jednotlivé osoby, pokud přijdou ve skupině a nakupují spolu, modelujeme je jako jeden proces
-\item Osoby, které si pouze koupí maso v masně a poté opět odejdou, na základě měření můžeme říci, že jich je velice málo a jejich začlenění do systému nebude mít velký účinek.
-\item Parkoviště a parkovací místa - ne všichni přijedou autem a navíc na základě měření můžeme říci, že zaplnění parkoviště není obvyklý ani častý jev.
-\end{itemize}
-\subsection{Slovní popis modelovaného systému}
-Do prodejny přichází lidé s exponenciálním rozložením se středem A vteřin.  Nejdříve zaberou vozík, kterých je k dispozici 200, a poté se vydají na nákup. Na vozík čekají max 10 vteřin, jinak odcházejí. Při vchodu do obchodu musí projít bránou, kterou může najednou projít jen jeden proces, jejíž průchod trvá exp(3s). Doba nákupu je dána  buď exponenciálním rozložením se středem B1 minut nebo B2 minut nebo B3 minut (velký,střední a malý nákup). Poté jdou lidé k pokladnám, kde se postaví do té fronty, ve které se nachází nejméně lidí. V případě více pokladen se stejným počtem lidí si vyberou tu nejbližší. Doba obsluhy u pokladny je dána exponencialním rozložením se středem C minut. Po odchodu z pokladny se ještě 30\% lidí zastaví v masně. V masně pracují dva prodavači a doba obsluhy je dána exponenciálním rozložením se středem Ž minut. Z této fronty zákazníci odcházejí neobslouženi, pokud čekají déle než 1 minutu. Pokladen je k dispozici D, ale většinou jich funguje méně. V prodejně je E zaměstnanců, tito zaměstanci buď chystají zboží nebo jsou na pokladnách. Jeden zaměstnanec také musí každou hodinu na dobu danou exponenciálním rozložením vejít do pekárny a chystat pečivo. Zaměstnanci mají také nárok na 30-minutovou přestávku. Tuto předstávku mohou vykonávat maximálně 25\% zaměstanců najednout a to pouze jednou za pracovní dobu. K této činnosti se mohou rozhodnout v momentu, kdy skončí právě prováděnou činnost. Prodavači na pokladně zůstávají tak dlouho, dokud není průměrná délka fronty menší než F lidí. Prodavači mají při obsluze 5\% šanci, že udělají chybu a budou muset volat vedoucí. Ta je většinu svého času v kanceláři a systém neovlivňuje, ale tato žádost od zaměstnance ji vyruší od práce, tedy dorazí až po době dané exponenciálním rozložením se středem G minut. Po obsloužení lidí vrací vozík a odchází ze systému, ale 5\% lidí něco zapomene a vrací se zpět do obchodu.
 
-\section{Implementační témata}
-\section{Architektura simulačního modelu/simulátoru}
-\section{Podstata simulačních experimentů a jejich průběh}
-\section{Shrnutí simulačních experimentů a závěr}
+
+\begin{center}
+    \begin{tabular}{| l | l | }
+    \hline
+    Jméno  třídy & Popis třídy  \\ \hline
+    TimeoutableProcess & Jednoduché rozšíření třídy process přidávající metody pro práce s mechanismem timeout. \\ \hline
+    ClosableFacility &  Rozšíření třídy Facility, které je možné uzavřít. \\ \hline
+    MaintainableClosableFacility & Rožšíření třídy ClosableFacility, pro jehož obsluhu je potřeba vymezit proces, který se o jeho provoz stará.  \\
+    \hline
+    \end{tabular}
+\end{center}
+
 
 \section{Závěr}
 \begin{enumerate}[label={[\arabic*]}]
-\item Plánovaná trasa koridoru zaznačená v~Google Maps \\
-        \href{http://povode.aspone.cz/Maps/dol.html}
-             {http://povodne.aspone.cz/Maps/dol.html} \label{google-mapa}
-      \item PERINGER P. Slajdy k přednáškám modelování a simulace, 2016. Verze  2016-09-20 [cit. 2016-12-05][Online] \\ 
-             \href{https://www.fit.vutbr.cz/study/courses/IMS/public/prednasky/IMS.pdf}
-             {https://www.fit.vutbr.cz/study/courses/IMS/public/prednasky/IMS.pdf}\label{prezentace}
+\item PERINGER P. Slajdy k přednáškám modelování a simulace, 2016. Verze  2016-09-20 [cit. 2016-12-05][Online] \\ 
+     \href{https://www.fit.vutbr.cz/study/courses/IMS/public/prednasky/IMS.pdf}
+          {https://www.fit.vutbr.cz/study/courses/IMS/public/prednasky/IMS.pdf}
+     \label{prezentace}
+\item Statistické informace Googlu o modelované prodejně \\
+     \href{http://goo.gl/6zOMvi}
+          {http://goo.gl/6zOMvi} 
+     \label{google-shop}
 \end{enumerate}
 \end{document}
