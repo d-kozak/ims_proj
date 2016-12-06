@@ -40,3 +40,13 @@ distrib:
 clean:
 	rm -f ${OBJECT_FILES} ${BASIC_MODEL} ${ADVANCED_MODEL}
 	rm -f ${ARCHIVE}
+
+
+run:
+	echo "================================================================================="
+	echo "Running basic model"
+	./${BASIC_MODEL}
+	echo "================================================================================="
+	echo "Running advanced model - model with self-service cash registers"
+	./${ADVANCED_MODEL}
+	echo "================================================================================="

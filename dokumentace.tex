@@ -67,10 +67,11 @@ Ve zvoleném období přichází zákazníci do obchodu v intervalech daných ex
 
 Dalšími důležitými osobami jsou zaměstanci prodejny. Těch je v obchodě stabilně 7-9 a jejich životní cyklus je následující. Zaměstanci mají na starost čtyři rozdílné činnosti, mezi kterými se rozhodují na základně priorit. Nejprioritnější činností je obsluha pekárny. Ta trvá dobu danou exponenciálním rozložením se středem 20 minut. Následně pekárna funguje po dobu 1 hodiny bez obsluhy, poté je potřeba ji znovu obsloužit. K pokladně se zaměstnanec přesune, pokud bude alespoň jedna pokladna uzavřena a průměrná délka front bude větší než 6 zákazníků. Zaměstanec pokladnu uzavírá, pokud je průměrná délka ve frontách kratší než 4 zákazníci. Pokud zaměstnanec nemusí jít k pekárně ani pokladnám, zbývají ještě dvě další činnosti. Zaměstnanec si může na dobu 30-ti minut vzít pauzu, nicméně na tuto pauzu má nárok pouze jednou v průběhu experimentu. Pokud není ani jedna z předchozích činností proveditelná, zaměstnanec bude po dobu 30-ti minut doplňovat zboží a poté znovu provede zhodnocení situace a případně půjde provést jinou činnost. Část zaměstnanců může pracovat pouze na skladě a celý den doplňovat zboží.
 
-\section{Koncepce - modelářská témata}
+\section{Koncepce}
 Cílem projektu je simulovat obchod v jeho nejvytíženějším období. Vzhledem k cíli práce je nutné vytvořit modely dva, první model pro současnou situaci a druhý model pro variantu se samoobslužnými pokladnami. 
 
-\subsection{Abstrahování}
+\subsection{Modelářská témata}
+\subsubsection{Abstrahování}
 Vzhledem k faktu, že simulace se zaměřuje hlavně na údaje o frontách před pokladnami, je možné některé aspekty skutečného systému zanedbat. Při vytváření abstraktního modelu došlo k následujícím abstrakcím. 
 \begin{itemize}
 \item Jednotlivé osoby, pokud přijdou ve skupině a nakupují spolu, jsou modelovány jako jeden proces zákazníka.
@@ -82,12 +83,12 @@ Vzhledem k faktu, že simulace se zaměřuje hlavně na údaje o frontách před
 \end{itemize}
 
 
-\subsection{Formální popis abstraktního modelu}
+\subsubsection{Formální popis abstraktního modelu}
 Jako formalismus pro zápis abstraktního modelu byla zvolena Petriho síť, kterou můžete vidět na následujícím obrázku. Barvy přechodů a stavů jsou použity pouze pro zvýšení přehlednosti obrázku a také pro legendu. Jako formální definice je využita ODKAZ  \\
 
 \begin{figure}[h]
 \centering
-\includegraphics[scale=0.3]{supermarket}
+\includegraphics[scale=0.3]{supermarketadvanced}
 \caption{Petriho síť modelující supermarket}
 \end{figure}
 
@@ -96,21 +97,89 @@ Výše uvedený model již zahrnuje i samoobslužné pokladny. Z toho tedy vypl�
 
 Některé pokročilé podmínky by se v petriho síti špatně vyjadřovaly, proto jsou pouze znázorněny v legendě a poté zahrnuty až do simulačního modelu. Mezi takovéto podmínky patří například otevírací a uzavírací podmínka u pokladen.
 
-\section{Koncepce - implementační témata}
-
-Program se skládá ze dvou modelů basic_model a abstract_model. Basic model modeluje současnou situaci v obchodu, zatímco abstract_model již zahrnuje i samoobslužné pokladny. Při spuštění oba modely produkují relativně velké množství údajů, z nichž z hlediska této práce patří mezi nejzajímavější statistiky o využití pokladen, klasických i samoobslužných, a též histogram zobrazující průměrnou dobu strávenou čekáním před pokladnami. Detailnější popis implementace je uveden v následující kapitole. 
+\subsection{Implementační témata}
+Program se skládá ze dvou modelů basic\_model a abstract\_model. Basic model modeluje současnou situaci v obchodu, zatímco abstract\_model již zahrnuje i samoobslužné pokladny. Při spuštění oba modely produkují relativně velké množství údajů, z nichž z hlediska této práce patří mezi nejzajímavější statistiky o využití pokladen, klasických i samoobslužných, a též histogram zobrazující průměrnou dobu strávenou čekáním před pokladnami. Detailnější popis implementace je uveden v následující kapitole. 
 
 \section{Architektura simulačního modelu/simulátoru}
-
-Jelikož abstrakce Process a Facility neposkytovaly všechny operace, které byly pro jednoduchou tvorbu simulačního modelu vhodné, autoři dané třídy rozšiřili. Popis rozšíření je následující. 
+V této sekci jsou popsány implementační detaily obou modelů basic i advanced. Nejdříve jsou diskutovány rozšíření nad knihovnou SIMLIB umožňující jednodušší tvorbu samotného simulačního modelu. V další části jsou popsány důležité a zajímavé vlastnosti samotného simulačního modelu.
+\subsection{Rozšíření tříd Process a Facility}
+Jelikož abstrakce Process a Facility neposkytovaly všechny operace, které byly pro jednoduchou tvorbu simulačního modelu vhodné, autoři dané třídy rozšiřili. Výstupem operace rozšiřování jsou následující třídy. 
 
 \begin{itemize}
 \item TimeoutableProcess  - Jednoduché rozšíření třídy process přidávající metody pro práce s mechanismem timeout.
-\item ClosableFacility -  Rozšíření třídy Facility, které je možné uzavřít. 
-\item MaintainableClosableFacility - Rožšíření třídy ClosableFacility, pro jehož obsluhu je potřeba vymezit proces, který se o jeho provoz stará. 
+\item ClosableFacility -  Rozšíření třídy Facility, nad kterou je definována operace uzavření, otevření a zjištění stavu. Pokud nějaký proces nad takovouto Facility bude volat metodu Seize, dojde ke generování výjimky FacilityNotOpenedException. Tato abstrakce je užitečná v případech, kdy je potřeba modelovat zařízení, které může být v průběhu simulace otevíráno a uzavíráno. K uzavření nastane buď při explicitním zavolání metody close. 
+\item MaintainableClosableFacility - Rožšíření třídy ClosableFacility, pro jehož obsluhu je potřeba vymezit proces, který se o jeho provoz stará. Pro otevření takovéto Facility je potřeba vyhradit proces, který bude po volání operace open pasivován až do doby, než bude facility znovu uzavřena. K tomuto dojde v případě, kdy jiný process nad Facility zavolá operaci close či při splnění podmínky ClosableFacilityClosingCondition, která je předávána objektu v konstruktoru a je interně testována v každé operaci Release. Při jejím splnění dojde k přechodu zařízení do stavu shutting down, ve kterém již není novým procesům umožněno vstoupit do fronty, ale procesy, které jsou již ve frontě přítomny, jsou obslouženy. Po obsloužení posledního z těchto procesů se Facility uzavírá a obsluhující proces je aktivován. 
 \end{itemize}
+
+\subsection{Popis simulačního modelu}
+V simulačním modelu obchodu se vyskytují dva procesy. Prvním procesem je proces zákazníka, který do obchodu přichází, prování nákup, poté je obsloužen u pokladny, případně i u masny, a následně ze systému odchází. Zákazník je modelovaný pomocí třídy TimeoutableProces, neboť při čekání na vozík či košík a při čekání ve frontě u masny je definován časový limit, po jehož uplynutí odchází neobsloužen.
+
+Druhým modelovaným procesem je zaměstanec. Vzhledem k popisu jeho činnosti popsány výše se může nacházet v jednom za čtyř stavů. Zaměstnanec buď obsluhuje pekárnu nebo obsluhuje zákazníky u pokladny nebo pracuje na skladě nebo má pauzu. Na počátku běhu simulace a následně po skončení právě prováděné činnosti si zaměstnanec na základě prioritního systému zvolí novou činnost. Nejprioritnější činností je starost o pekárnu. Vzhledem k faktu, že k nutnosti obsluhy pekárny dochází s hodinovými mezerami, není tato činnost příliš častá. Nejběžnější činností zaměstnance je obsluha zákazníků u pokladny. Další činnosti zaměstnance je doplňování zboží a pauza. V basic modelu je zaměstnanců 7, každý pro jednu pokladnu. V advanced modelu je zaměstanců pouze 5. Šestý zaměstnanec má na starosti samobslužné pokladny a je modelován pouze jako oblužná linka. Sedmý zaměstnanec není v modelu již potřeba. 
+
+Pokladny jsou modelovány pomocí třídy MaintainableClosableFacility. K jejich obsluze je totiž nutná přitomnost zamětstnance, který v danou chvíli nemůže dělat žádnou jinou činnost. Podmínka ClosableFacilityCondition byla již zmíněna dříve a v tomto konkrétním případě nabývá hodnoty true pokud je průměrná délka u pokladen menší než 4. Zaměstanec je při vstupu do pokladny pasivován a následně znovu aktivován po jejím uzavření, ke kterému dojde při splnění podmínky pro uzavření, přechodu do stavu shutting down a následnému vyprázdnění fronty. 
+
+Masna je modelována jako Skladiště s velikostí 2, ke kterému přichází pouze 20 \%  procesů. Tyto procesy, jak již bylo zmíněno výše, z fronty odcházejí, pokud jejich obsluha nezapočne dříve než za 3 minuty od počátku čekání ve frontě. 
+
+Pekárna je modelována speciálním způsobem. Je reprezentována pouze jednou proměnnou Boolovského typu, k jejímu označení se dále bude používat výraz flag. Pokud zaměstanec zjistí, že daný flag má hodnotu true, začne obsluhovat pekárnu.  Prvním krokem této obsluhy je  nastavení flagu do hodnoty false. Dále je proces zaměstance pasivován funkcí Wait na dobu danou exponenciálním rozložením se středem 20 minut. Jakmile je zaměstnanec opět aktivován, naplánuje Event v čase Time + 1 hodina, který hodnotu flagu opět nastaví do hodnoty true. 
+
+Vozíky a košíky jsou modelovány jako jedno skladiště s kapacitou 300. 
+
+Speciální částí advanced modelu jsou samoobslužné pokladny. K nim přichází pouze určité procento zákazníků a to pouze tehdy, pokud je celková fronta tvořená před nimi kratší než 10 zákazníků. Jedná se o skladiště s kapacitou 6. Jelikož při samobslužných pokladnách lidé často chybují, s 10\%  pravděpodobností budou zákazníci potřebovat poradit, k čemuž je vyhrazena obslužná linka modelující zaměstance, který má samoobslužné pokladny na starost.  
+
+
 \section{Podstata simulačních experimentů a jejich průběh}
+Cílem této práce je dokázat, že instalace šesti samoobslužných pokladen za cenu ztráty dvou normálních bude mít pozitivní účinek na dobu strávenou ve frontách i na průměrnou a maximální délku front. Pro experimentování bylo ale nejdříve potřeba najít nejvhodnější všech vstupních údajů tak, aby výsledný model co nejvěrohodněji modeloval skutečný systém. 
+
+\subsection{Postup experimentování}
+První fází byla validace modelu. Jejím výstupem byl abstraktní model, který z pohledu autorů v dostatečné míře modeloval původní systém obchodu. Dalším krokem byla tvorba simulačního modelu. První experimenty s ním sloužili hlavně za účelem verifikace modelu. Tento proces obnášel porovnávání výsledků běhů simulace s naměřenými daty. Nutno podotkonout, že v této fázi několikrát došlo k úpravám abstraktního modelu, protože se zjistilo, že nebyl dostatečně validní. 
+
+Jakmile autoři dospěli do bodu, kdy dle jejich uvážení základní simulačního model dostatečně přesně modeloval skutečný systém, byla zahájena tvorba pokročilého simulačního modelu, který již zahrnoval výše zmíněné samoobslužné pokladny. Zde byla problematika validace a verifikace náročnější, neboť skutečná data z pochopitelných důvodů nemohla být naměřena. Tento model totiž modeluje verzi obchodu, která zatím neexistuje. Autoři tedy byli nuceni výsledky validovat pouze na základě svého vlastního odhadu a za pomoci dat z jiných prodejen, které již mají samoobslužné pokladny zavedené.
+
+\subsection{První experimenty}
+První experimenty byly spouštěny za účelem ověřování validity modelu. Nenaštěstí bylo zjištěno, že vytvořený model přiliš realitě neodpovídal. Tvořily se v něm příliš dlouhé fronty, průměrná doba strávená na pokladnách dosahovala až jedné hodiny, což bylo nepřijatelné. Výstup můžete vidět na níže uvedeném histogramu. 
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.75]{awful}
+\caption{Histogram doby strávenené čekáním u pokladen v nevalidním modelu}
+\end{figure}
+
+Fronty navíc způsobovaly vyprázdnění skladiště na vozíky a velký počet zákazníků, kteří ze systému odešli po deseti vteřinách bez vozíků. Aby došlo k odstranění tohoto jevu, bylo zapotřebí provést následující úpravy:
+\begin{itemize}
+\item změna střední hodnoty exponenciálního rozdělení příchodu zákazníků z 11 vteřin na 18 vteřin
+\item snížení výskytu chyb u zaměstanců na pokladně z 5 \% na 3 \%
+\item zvýšení doby timeoutu masny na 3 minuty
+Po výše uvedených úpravách již výstupy modelu dostatečně odpovídaly skutečnému systému. 
+\end{itemize}
+\subsection{Experimenty se základním modelem}
+Výsledky je možné vidět na následujícím histogramu. Pro účely ověření je tento experiment možno spustit příkazem ./basic .
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.75]{basic}
+\caption{Histogram doby strávené čekáním u pokladen v základním modelu}
+\end{figure}
+
+\subsection{Experimenty s rozšířeným modelem}
+Tyto experimenty sloužily k získání představy o tom, jakým způsobem bude systém ovliněn při výše zmíněné výměně dvou normálních pokladen za šest samoobslužných. Výsledky je možné vidět na následujícím histogramu. Výsledky je možné vidět na následujícím histogramu. Pro účely ověření je tento experiment možno spustit příkazem ./advanced .
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.75]{advanced}
+\caption{Histogram doby strávené čekáním u pokladen v rozšířeném modelu}
+\end{figure}
+
+\subsection{Srovnání experimentů}
+Ze srovnání histogramů dvou předchozích experimentů je patrné, že průměrná doba strávená skutečně poklesla. Tento pokles je dokonce poměrně výrazný a dle názoru autorů by ho jistě zákazníci uvítali. Jako zajímavé zjištění může být uveden fakt, že navzdory počátečním úvahám bylo při experimentech zjištěno, že budou bohatě stačit tři samoobslužné pokladny, neboť průměrné využití skladiště, které je modelovalo, málokdy dosáhlo vyšších hodnot průměrného využití než 3. 
+\subsection{Popis použití simulátoru}
+
+
+
+
+
 \section{Shrnutí simulačních experimentů a závěr}
+V tomto projektu byl modelován supermarket Lidl na adrese Hviezdoslavova 1288. Validita modelu byla ověřena daty získanými při měření. Cílem experimentů bylo prokázat, že instalace šesti samoobslužných pokladen za cenu odstranění dvou normálních bude mít pozitivní účinek na délku fronty. Na základě experimentů bylo zjištěno, že po nainstalování samobslužných pokladen skutečně dojde ke snížení doby čekání ve frontách i ke snížení průměrných délek front u pokladen. Také bylo zjištěno, že navdory původní předpokladům, pro dosažení cíleného účinku budou stačit pouze tři samoobslužné pokladny místo původních šesti. V rámci projektu též vznikla nová abstrakce nad knihovnou SIMLIB. Toto rozšíření   obsahuje třídy TimeoutableProcess,ClosableFacility a MaintainableClosableFacility. 
+
 
 V této části popíšeme data získaná z oficiálních zdrojů lidlu a také je srovnáme s naším vlastním měřením.
 \subsection{Meření}
@@ -161,16 +230,31 @@ Naměřeno Petrem
     \end{tabular}
 \end{center}
 
-
 \section{Závěr}
 \begin{enumerate}[label={[\arabic*]}]
-\item PERINGER P. Slajdy k přednáškám modelování a simulace, 2016. Verze  2016-09-20 [cit. 2016-12-05][Online] \\ 
+\item PERINGER P. Slajdy k přednáškám modelování a simulace, 2016. Verze  2016-09-20 [cit. 2016-12-05][Online] \\
      \href{https://www.fit.vutbr.cz/study/courses/IMS/public/prednasky/IMS.pdf}
           {https://www.fit.vutbr.cz/study/courses/IMS/public/prednasky/IMS.pdf}
      \label{prezentace}
+
+\item PERINGER P. SIMulation LIBrary for C++, 2011. [Online] \\
+    \href{https://www.fit.vutbr.cz/~peringer/SIMLIB/}
+         {https://www.fit.vutbr.cz/~peringer/SIMLIB/}
+    \label{demo1}
+
+\item HRUBÝ M. Demonstrační cvičení IMS \#1, [cit. 2016-12-05][Online] \\
+    \href{http://perchta.fit.vutbr.cz:8000/vyuka-ims/uploads/1/ims-demo1.pdf}
+        {http://perchta.fit.vutbr.cz:8000/vyuka-ims/uploads/1/ims-demo1.pdf}
+    \label{demo2}
+
+\item HRUBÝ M. IMS democvičení \#2, [cit. 2016-12-05][Online] \\
+    \href{http://perchta.fit.vutbr.cz:8000/vyuka-ims/uploads/1/diskr2-2011.pdf}
+        {http://perchta.fit.vutbr.cz:8000/vyuka-ims/uploads/1/diskr2-2011.pdf}
+    \label{simlib}
+
 \item Statistické informace Googlu o modelované prodejně \\
      \href{http://goo.gl/6zOMvi}
-          {http://goo.gl/6zOMvi} 
+          {http://goo.gl/6zOMvi}
      \label{google-shop}
 \end{enumerate}
 \end{document}
