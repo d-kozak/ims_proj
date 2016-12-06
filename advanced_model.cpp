@@ -5,59 +5,9 @@
 #include "MaintainableClosableFacility.h"
 #include "internal.h"
 #include "FacilityInvalidStateException.h"
-
+#include "TimeoutableProcess.h"
 
 #include <sys/time.h>
-
-/**
- * "Library" section
- * It contains extensions for simlib classes which proved to be useful in our project
- */
-class TimeoutableProcess;
-
-class Timeout : public Event {
-    TimeoutableProcess *_process;
-public:
-    Timeout(TimeoutableProcess *process) : Event(), _process(process) {};
-
-    void Behavior();
-
-};
-
-class TimeoutableProcess : public Process {
-    // TODO use behaviour parametrization design pattern for clearer timeout
-    friend class Timeout;
-
-    Timeout *_timeout;
-    bool _timeoutHappened;
-protected:
-    void cancelTimeout() {
-        _timeoutHappened = false;
-        this->_timeout->Cancel();
-    }
-
-    void setTimeout(double time) {
-        _timeoutHappened = false;
-        this->_timeout = new Timeout(this);
-        this->_timeout->Activate(Time + time);
-    }
-
-    void timeout() {
-        _timeoutHappened = true;
-        Out();
-        Activate();
-    }
-
-    bool wasTimeouted() {
-        return _timeoutHappened;
-    }
-};
-
-void Timeout::Behavior() {
-    _process->timeout();
-    Cancel();
-}
-
 /**
  *          CONSTANTS
  * All constants are in seconds
