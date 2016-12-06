@@ -35,7 +35,7 @@ ${BASIC_MODEL}: ${FILES}
 	${CC} ${CPPFLAGS} ${FILES} basic_model.cpp  -o ${BASIC_MODEL} ${libs} ${OPT}
 
 distrib:
-	tar -cvzf ${ARCHIVE} ${FILES} basic_model.cpp advanced_model.cpp Makefile dokumentace.pdf
+	tar -cvzf ${ARCHIVE} ${FILES} basic_model.cpp advanced_model.cpp Makefile dokumentace.pdf *.h
 
 clean:
 	rm -f ${OBJECT_FILES} ${BASIC_MODEL} ${ADVANCED_MODEL}
